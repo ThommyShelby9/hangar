@@ -1,6 +1,6 @@
 // Copies the release build to the portable install folder (never C:).
 // Usage: npm run build:portable   — target folder can be overridden with HANGAR_DIR.
-import { copyFileSync, existsSync, mkdirSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const target = process.env.HANGAR_DIR ?? "O:\\Apps\\Hangar";
@@ -24,10 +24,18 @@ if (missing.length) {
 
 mkdirSync(target, { recursive: true });
 for (const [source, name] of files) {
+  const destination = join(target, name);
+  // Unchanged files are left alone: hangar-sensors.exe runs all the time and is locked by Windows.
+  if (existsSync(destination) && readFileSync(source).equals(readFileSync(destination))) continue;
   try {
-    copyFileSync(source, join(target, name));
+    copyFileSync(source, destination);
+    console.log(`  ${name} mis à jour`);
   } catch (error) {
-    console.error(`Impossible de copier ${name} : ${error.message}\nFerme Hangar s'il est ouvert, puis relance.`);
+    const hint =
+      name === "hangar-sensors.exe"
+        ? "Le capteur tourne en arrière-plan : arrête la tâche « Hangar - capteurs » dans le Planificateur de tâches, puis relance."
+        : "Ferme Hangar s'il est ouvert, puis relance.";
+    console.error(`Impossible de copier ${name} : ${error.message}\n${hint}`);
     process.exit(1);
   }
 }
