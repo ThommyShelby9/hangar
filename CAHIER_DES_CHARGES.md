@@ -314,6 +314,8 @@ Chaque phase contient : **objectif**, **fonctionnalités** (cases à cocher), **
 - [x] Jeux Steam/Epic : même mécanisme via leur dossier d'installation
 - [x] Robustesse : chaque session a un « battement » toutes les 5 s ; après un plantage ou un arrêt du PC, elle est fermée au dernier battement, ou reprise si le jeu tourne encore au redémarrage de Hangar (< 2 min)
 - [x] Sessions de moins de 1 minute ignorées
+- [x] « Dernière partie » et « Joués récemment » ne suivent que les sessions enregistrées (corrigé le 21/09 : le bouton Jouer les mettait à jour même sans vraie partie)
+- [x] Le scan des dossiers au démarrage ne bloque plus la base (corrigé le 21/09 : il retardait le suivi et pouvait faire perdre une courte partie)
 - [ ] Durée minimale réglable
 
 #### 2.2 Affichage
@@ -367,8 +369,8 @@ Le pilote PawnIO n'accepte que les administrateurs (`D:P(A;;GA;;;SY)(A;;GA;;;BA)
 - [x] Carte d'activation du capteur (pilote absent / capteur coupé / erreur)
 
 #### 3.4 Lien avec les sessions
-- [ ] Enregistrement pendant les sessions : températures max, charge moyenne
-- [ ] **Résumé de fin de session** : durée, température max, charge moyenne (FPS en phase 7)
+- [x] Enregistrement pendant les sessions (toutes les 5 s) : température max du processeur et de la carte graphique, charge moyenne
+- [x] **Résumé de fin de session** : carte affichée à la fermeture du jeu (durée, charge moyenne, températures max) ; colonne « Processeur max » dans l'historique des Stats (FPS en phase 7)
 
 #### Mesures (21/09/2026)
 - `hangar-sensors` : 0 % CPU, 4 Mo.
