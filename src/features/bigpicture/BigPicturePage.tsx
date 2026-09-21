@@ -57,7 +57,7 @@ export function BigPicturePage() {
     const appWindow = getCurrentWindow();
     appWindow.setFullscreen(true);
     return () => {
-      appWindow.setFullscreen(false);
+      void leaveFullscreen(appWindow);
     };
   }, []);
 
@@ -269,4 +269,16 @@ function Clock() {
       {now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
     </span>
   );
+}
+
+/**
+ * Windows ignores a "leave full screen" request that arrives while the "enter" transition is still
+ * running: ask, check, and ask again.
+ */
+async function leaveFullscreen(appWindow: ReturnType<typeof getCurrentWindow>) {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    await appWindow.setFullscreen(false);
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    if (!(await appWindow.isFullscreen())) return;
+  }
 }
