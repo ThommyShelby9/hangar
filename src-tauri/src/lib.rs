@@ -1,4 +1,5 @@
 mod commands;
+mod controllers;
 mod db;
 mod hardware;
 mod launcher;
@@ -19,7 +20,7 @@ use rusqlite::Connection;
 use tauri::http::{header::CONTENT_TYPE, Response, StatusCode};
 use tauri::utils::config::WindowEffectsConfig;
 use tauri::window::Effect;
-use tauri::{Theme, WebviewUrl, WebviewWindowBuilder};
+use tauri::{Manager, Theme, WebviewUrl, WebviewWindowBuilder};
 
 pub struct AppState {
     pub paths: AppPaths,
@@ -71,6 +72,7 @@ pub fn run() {
             webview_memory::install(&window);
 
             tracker::spawn(app.handle().clone());
+            app.manage(controllers::spawn(app.handle().clone()));
 
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
@@ -108,6 +110,10 @@ pub fn run() {
             commands::hardware_info,
             commands::hardware_snapshot,
             commands::enable_cpu_sensors,
+            commands::controllers_status,
+            commands::controllers_live,
+            commands::controller_rumble,
+            commands::controller_motion,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

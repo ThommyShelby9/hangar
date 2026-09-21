@@ -9,6 +9,7 @@ const files = [
   [join(root, "src-tauri", "target", "release", "Hangar.exe"), "Hangar.exe"],
   [join(root, "sensors", "target", "release", "hangar-sensors.exe"), "hangar-sensors.exe"],
   [join(root, "sensors", "modules", "IntelMSR.bin"), "IntelMSR.bin"],
+  [join(root, "vendor", "sdl3", "SDL3.dll"), "SDL3.dll"],
 ];
 
 if (/^c:/i.test(target)) {

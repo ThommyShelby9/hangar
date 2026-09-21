@@ -26,6 +26,7 @@ urlencoding = "2"
 tauri-plugin-dialog = "2"
 sysinfo = { version = "0.39", default-features = false, features = ["system", "disk", "network"] }
 nvml-wrapper = "0.13"
+sdl3 = { version = "0.20", features = ["hidapi"] }
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.56"

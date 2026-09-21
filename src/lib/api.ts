@@ -225,3 +225,44 @@ export const hardwareApi = {
   snapshot: () => invoke<HardwareSnapshot>("hardware_snapshot"),
   enableCpuSensors: () => invoke<void>("enable_cpu_sensors"),
 };
+
+export interface PadInfo {
+  id: number;
+  name: string;
+  kind: "ps4" | "ps3" | "ps5" | "xbox" | "switch" | "other";
+  connection: "usb" | "bluetooth" | "unknown";
+  battery: { percent: number | null; charging: boolean } | null;
+  hasRumble: boolean;
+  hasTouchpad: boolean;
+  hasMotion: boolean;
+}
+
+export interface ControllersStatus {
+  pads: PadInfo[];
+  ds4windows: boolean;
+}
+
+export interface PadInput {
+  id: number;
+  /** Pressed buttons: south, east, west, north, l1, r1, l3, r3, share, options, ps, touchpad, up… */
+  buttons: string[];
+  /** Sticks, -1…1 (y grows downwards). */
+  left: [number, number];
+  right: [number, number];
+  /** L2 / R2, 0…1. */
+  triggers: [number, number];
+  /** Touchpad fingers, 0…1. */
+  fingers: [number, number][];
+  gyro: [number, number, number] | null;
+  accel: [number, number, number] | null;
+}
+
+export const CONTROLLERS_CHANGED = "controllers-changed";
+export const CONTROLLER_INPUT = "controller-input";
+
+export const controllersApi = {
+  status: () => invoke<ControllersStatus>("controllers_status"),
+  live: (on: boolean) => invoke<void>("controllers_live", { on }),
+  rumble: (id: number, strong: boolean) => invoke<void>("controller_rumble", { id, strong }),
+  motion: (id: number, enabled: boolean) => invoke<void>("controller_motion", { id, enabled }),
+};

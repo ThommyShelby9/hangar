@@ -5,7 +5,7 @@ use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::library::{self, folders, names, GamePatch, LaunchAction, NewManualGame};
 use crate::metadata::{self, sgdb};
-use crate::{db, hardware, launcher, paths, scanners, tracker, AppState};
+use crate::{controllers, db, hardware, launcher, paths, scanners, tracker, AppState};
 
 /// Emitted whenever games, images or statuses change; the UI refetches the library.
 pub const LIBRARY_CHANGED: &str = "library-changed";
@@ -253,6 +253,35 @@ pub fn enable_cpu_sensors(state: State<'_, AppState>) -> CmdResult<()> {
         run_as_admin: true,
         is_default: false,
     })
+}
+
+// ── Controllers ─────────────────────────────────────────────────────────────
+
+fn send(controllers: &controllers::Controllers, command: controllers::Command) -> CmdResult<()> {
+    controllers.commands.lock().map_err(err)?.send(command).map_err(err)
+}
+
+#[tauri::command]
+pub fn controllers_status(controllers: State<'_, controllers::Controllers>) -> CmdResult<controllers::Status> {
+    Ok(controllers.status.lock().map_err(err)?.clone())
+}
+
+/// Streams live inputs while the controller test page is open.
+#[tauri::command]
+pub fn controllers_live(controllers: State<'_, controllers::Controllers>, on: bool) -> CmdResult<()> {
+    send(&controllers, controllers::Command::Live(on))
+}
+
+/// Half a second on one motor: `strong` is the left (low-frequency) one.
+#[tauri::command]
+pub fn controller_rumble(controllers: State<'_, controllers::Controllers>, id: u32, strong: bool) -> CmdResult<()> {
+    let (low, high) = if strong { (0xC000, 0) } else { (0, 0xC000) };
+    send(&controllers, controllers::Command::Rumble { id, low, high, ms: 500 })
+}
+
+#[tauri::command]
+pub fn controller_motion(controllers: State<'_, controllers::Controllers>, id: u32, enabled: bool) -> CmdResult<()> {
+    send(&controllers, controllers::Command::Motion { id, enabled })
 }
 
 // ── Watched folders ─────────────────────────────────────────────────────────
