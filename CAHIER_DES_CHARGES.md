@@ -405,10 +405,10 @@ Mesures sur une copie de test pilotée par le port de débogage WebView2 (Hangar
 **Objectif** : tester et régler ma **DualShock 4** et ma **DualShock 3** depuis l'appli.
 
 #### 4.1 Commun
-- [ ] Détection des manettes branchées/débranchées (SDL3) : nom, type, USB ou Bluetooth
-- [ ] **Page de test interactive** : dessin SVG de la manette, boutons qui s'allument, position des sticks, gâchettes en barres 0–100 %
-- [ ] **Détection de la dérive** des sticks (mesure du bruit au repos)
-- [ ] **Test des vibrations** (moteurs gauche/droit)
+- [x] Détection des manettes branchées/débranchées (SDL3) : nom, type, USB ou Bluetooth — **vérifié le 21/09 avec deux DS4 (USB + Bluetooth), DS4Windows ouvert**
+- [x] **Page de test interactive** : dessin SVG de la manette, boutons qui s'allument, position des sticks, gâchettes en barres 0–100 % — **vérifié sur les deux DS4**
+- [x] **Détection de la dérive** des sticks (mesure pendant 2 s au repos)
+- [x] **Test des vibrations** (moteurs gauche/droit)
 - [ ] Niveau de batterie dans la barre latérale
 
 #### 4.2 DualShock 4
