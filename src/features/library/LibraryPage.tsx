@@ -1,17 +1,190 @@
-import { motion } from "motion/react";
+import { useEffect, useMemo, useState } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { AnimatePresence, motion } from "motion/react";
+import Fuse from "fuse.js";
+import { open } from "@tauri-apps/plugin-dialog";
+import { getCurrentWebview } from "@tauri-apps/api/webview";
+import { FolderSearch, Plus, Search } from "lucide-react";
+import { api, type FolderCandidate } from "@/lib/api";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
+import { Button } from "@/components/Button";
+import { toast } from "@/lib/toast";
+import { cn } from "@/lib/utils";
+import { useGames } from "@/features/library/queries";
+import { GameCard } from "@/features/library/GameCard";
+import { ImportDialog } from "@/features/library/ImportDialog";
+
+type Filter = "all" | "favorites";
 
 export function LibraryPage() {
-  return (
+  const { data: games = [], isPending } = useGames();
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<Filter>("all");
+  const [candidates, setCandidates] = useState<FolderCandidate[] | null>(null);
+  const dragging = useDroppedGames(setCandidates);
+
+  const scan = useMutation({
+    mutationFn: api.scanFolders,
+    onSuccess: (found) => {
+      if (found.length === 0) toast.info("Aucun nouveau jeu dans les dossiers surveillés.");
+      else setCandidates(found);
+    },
+    onError: toast.error,
+  });
+
+  const addFiles = useMutation({
+    mutationFn: async () => {
+      const picked = await open({
+        multiple: true,
+        title: "Choisir l'exécutable du jeu",
+        filters: [{ name: "Jeux", extensions: ["exe"] }],
+      });
+      return picked?.length ? api.analyzePaths(picked) : null;
+    },
+    onSuccess: (found) => found && setCandidates(found),
+    onError: toast.error,
+  });
+
+  const visible = useMemo(() => {
+    const shown = games.filter((g) => !g.hidden && (filter === "all" || g.favorite));
+    if (!query.trim()) return shown;
+    return new Fuse(shown, { keys: ["title"], threshold: 0.35, ignoreLocation: true })
+      .search(query.trim())
+      .map((r) => r.item);
+  }, [games, query, filter]);
+
+  const actions = (
     <>
-      <PageHeader title="Bibliothèque" />
-      <EmptyState title="Le hangar est vide" art={<EmptyStand />}>
-        Hangar ira chercher tes jeux sur Steam, sur Epic, dans H:\Games et dans N:\. Tu pourras
-        aussi en ajouter à la main en glissant un .exe dans la fenêtre.
-      </EmptyState>
+      <Button onClick={() => scan.mutate()} disabled={scan.isPending}>
+        <FolderSearch size={16} />
+        {scan.isPending ? "Recherche…" : "Chercher des jeux"}
+      </Button>
+      <Button onClick={() => addFiles.mutate()}>
+        <Plus size={16} />
+        Ajouter un jeu
+      </Button>
     </>
   );
+
+  const libraryEmpty = !isPending && games.length === 0;
+
+  return (
+    <div className="relative min-h-full">
+      <PageHeader title="Bibliothèque" actions={libraryEmpty ? undefined : actions} />
+
+      {libraryEmpty ? (
+        <EmptyState title="Le hangar est vide" art={<EmptyStand />}>
+          Hangar cherche tes jeux dans les dossiers surveillés (H:\Games et N:\ pour l'instant). Tu
+          peux aussi glisser un .exe dans la fenêtre.
+          <span className="mt-6 flex justify-center gap-2">{actions}</span>
+        </EmptyState>
+      ) : (
+        <>
+          <div className="flex flex-wrap items-center gap-3 px-10 pb-6">
+            <label className="relative w-72">
+              <Search
+                size={16}
+                className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-alu-dim"
+              />
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Rechercher un jeu"
+                aria-label="Rechercher un jeu"
+                className="h-9 w-full rounded-control border border-rivet bg-bay pr-3 pl-9 placeholder:text-alu-dim/70 focus:border-signal focus:outline-none"
+              />
+            </label>
+            <div role="radiogroup" aria-label="Filtre" className="flex gap-1">
+              {(
+                [
+                  ["all", "Tous"],
+                  ["favorites", "Favoris"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  role="radio"
+                  aria-checked={filter === value}
+                  onClick={() => setFilter(value)}
+                  className={cn(
+                    "h-9 rounded-control px-3.5 transition-colors",
+                    filter === value
+                      ? "bg-rivet/60 text-alu"
+                      : "text-alu-dim hover:bg-rivet/30 hover:text-alu",
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <p className="ml-auto text-alu-dim tabular-nums">
+              {visible.length} {visible.length > 1 ? "jeux" : "jeu"}
+            </p>
+          </div>
+
+          {visible.length === 0 ? (
+            <EmptyState title="Aucun jeu ne correspond">
+              {query ? `Rien pour « ${query} ».` : "Tu n'as pas encore de favori."}
+            </EmptyState>
+          ) : (
+            <ul className="grid grid-cols-[repeat(auto-fill,minmax(10.5rem,1fr))] gap-x-5 gap-y-7 px-10 pb-12">
+              {visible.map((game) => (
+                <li key={game.id}>
+                  <GameCard game={game} />
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+
+      <AnimatePresence>
+        {dragging && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="pointer-events-none fixed inset-0 z-40 grid place-items-center bg-tarmac/80 backdrop-blur-sm"
+          >
+            <div className="rounded-panel border-2 border-dashed border-signal px-16 py-12 text-center">
+              <p className="font-display text-title font-semibold">Dépose ici</p>
+              <p className="mt-1 text-alu-dim">Un .exe ou un dossier de jeu</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {candidates && <ImportDialog candidates={candidates} onClose={() => setCandidates(null)} />}
+    </div>
+  );
+}
+
+/** Files dropped on the window go through the same review as a folder scan. */
+function useDroppedGames(onFound: (candidates: FolderCandidate[]) => void) {
+  const [dragging, setDragging] = useState(false);
+  useEffect(() => {
+    const unlisten = getCurrentWebview().onDragDropEvent(async (event) => {
+      const { type } = event.payload;
+      if (type === "enter" || type === "over") setDragging(true);
+      else if (type === "leave") setDragging(false);
+      else if (type === "drop") {
+        setDragging(false);
+        try {
+          const found = await api.analyzePaths(event.payload.paths);
+          if (found.length === 0) toast.error("Aucun jeu reconnu dans ce que tu as déposé.");
+          else onFound(found);
+        } catch (e) {
+          toast.error(e);
+        }
+      }
+    });
+    return () => {
+      unlisten.then((off) => off());
+    };
+  }, [onFound]);
+  return dragging;
 }
 
 /** An empty aircraft stand seen from above: painted lead-in line, stop bar, stand outline. */

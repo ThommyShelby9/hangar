@@ -48,6 +48,11 @@
     height: 100%;
   }
 
+  /* Native controls (scrollbars, date pickers…) in their dark variant. */
+  :root {
+    color-scheme: dark;
+  }
+
   /* Transparent so the Mica window effect shows through the sidebar. */
   html,
   body {

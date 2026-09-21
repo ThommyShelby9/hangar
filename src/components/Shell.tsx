@@ -1,8 +1,11 @@
 import { Outlet } from "react-router";
 import { Titlebar } from "@/components/Titlebar";
 import { Sidebar } from "@/components/Sidebar";
+import { Toaster } from "@/components/Toaster";
+import { useLibraryEvents } from "@/features/library/queries";
 
 export function Shell() {
+  useLibraryEvents();
   return (
     <div className="flex h-full flex-col bg-tarmac-glass">
       <Titlebar />
@@ -12,6 +15,7 @@ export function Shell() {
           <Outlet />
         </main>
       </div>
+      <Toaster />
     </div>
   );
 }

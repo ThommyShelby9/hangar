@@ -7,6 +7,7 @@ import { StatsPage } from "@/features/stats/StatsPage";
 import { HardwarePage } from "@/features/hardware/HardwarePage";
 import { ControllersPage } from "@/features/controllers/ControllersPage";
 import { SettingsPage } from "@/features/settings/SettingsPage";
+import { GamePage } from "@/features/game/GamePage";
 
 const queryClient = new QueryClient();
 
@@ -19,6 +20,7 @@ export default function App() {
             <Route element={<Shell />}>
               <Route index element={<Navigate to="/bibliotheque" replace />} />
               <Route path="bibliotheque" element={<LibraryPage />} />
+              <Route path="jeu/:id" element={<GamePage />} />
               <Route path="stats" element={<StatsPage />} />
               <Route path="materiel" element={<HardwarePage />} />
               <Route path="manettes" element={<ControllersPage />} />
