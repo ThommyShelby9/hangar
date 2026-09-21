@@ -318,3 +318,14 @@ export const manageApi = {
   setGameCollections: (id: number, collections: number[]) =>
     invoke<void>("set_game_collections", { id, collections }),
 };
+
+export interface StartupSettings {
+  autostart: boolean;
+  hideOnClose: boolean;
+}
+
+export const startupApi = {
+  settings: () => invoke<StartupSettings>("startup_settings"),
+  setAutostart: (enabled: boolean) => invoke<void>("set_autostart", { enabled }),
+  setHideOnClose: (enabled: boolean) => invoke<void>("set_hide_on_close", { enabled }),
+};

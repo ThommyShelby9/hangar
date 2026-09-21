@@ -7,7 +7,9 @@ mod library;
 mod metadata;
 mod paths;
 mod scanners;
+mod single_instance;
 mod tracker;
+mod tray;
 mod webview_memory;
 
 use std::path::{Component, Path};
@@ -42,8 +44,13 @@ pub fn run() {
             std::process::exit(1);
         }
     };
+    // A second launch on the same data folder brings the running Hangar back, then quits.
+    let Some(instance) = single_instance::acquire(&state.paths.data) else { return };
     let webview_dir = state.paths.webview.clone();
     let cache_dir = state.paths.cache.clone();
+
+    // Started by Windows at log-on: stay in the notification area.
+    let start_hidden = std::env::args().any(|a| a == tray::MINIMIZED_ARG);
 
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
@@ -68,8 +75,15 @@ pub fn run() {
                     ..Default::default()
                 })
                 .data_directory(webview_dir)
+                .visible(!start_hidden)
                 .build()?;
             webview_memory::install(&window);
+            tray::install(app.handle(), &window)?;
+            let handle = app.handle().clone();
+            instance.on_second_launch(move || tray::show(&handle));
+            if start_hidden {
+                webview_memory::set_low_memory(&window, true);
+            }
 
             tracker::spawn(app.handle().clone());
             app.manage(controllers::spawn(app.handle().clone()));
@@ -126,6 +140,9 @@ pub fn run() {
             commands::controllers_live,
             commands::controller_rumble,
             commands::controller_motion,
+            commands::startup_settings,
+            commands::set_autostart,
+            commands::set_hide_on_close,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

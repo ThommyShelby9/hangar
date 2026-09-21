@@ -13,7 +13,7 @@ pub fn install<R: Runtime>(window: &WebviewWindow<R>) {
 }
 
 #[cfg(windows)]
-fn set_low_memory<R: Runtime>(window: &WebviewWindow<R>, low: bool) {
+pub fn set_low_memory<R: Runtime>(window: &WebviewWindow<R>, low: bool) {
     use webview2_com::Microsoft::Web::WebView2::Win32::{
         ICoreWebView2_19, COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_LOW,
         COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_NORMAL,
@@ -35,4 +35,4 @@ fn set_low_memory<R: Runtime>(window: &WebviewWindow<R>, low: bool) {
 }
 
 #[cfg(not(windows))]
-fn set_low_memory<R: Runtime>(_window: &WebviewWindow<R>, _low: bool) {}
+pub fn set_low_memory<R: Runtime>(_window: &WebviewWindow<R>, _low: bool) {}

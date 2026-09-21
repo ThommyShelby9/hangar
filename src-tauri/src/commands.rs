@@ -5,7 +5,7 @@ use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::library::{self, folders, names, GamePatch, LaunchAction, NewManualGame};
 use crate::metadata::{self, sgdb};
-use crate::{controllers, db, hardware, launcher, paths, scanners, tracker, AppState};
+use crate::{controllers, db, hardware, launcher, paths, scanners, tracker, tray, AppState};
 
 /// Emitted whenever games, images or statuses change; the UI refetches the library.
 pub const LIBRARY_CHANGED: &str = "library-changed";
@@ -423,6 +423,31 @@ pub fn controller_rumble(controllers: State<'_, controllers::Controllers>, id: u
 #[tauri::command]
 pub fn controller_motion(controllers: State<'_, controllers::Controllers>, id: u32, enabled: bool) -> CmdResult<()> {
     send(&controllers, controllers::Command::Motion { id, enabled })
+}
+
+// ── Start-up and notification area ──────────────────────────────────────────
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StartupSettings {
+    autostart: bool,
+    hide_on_close: bool,
+}
+
+#[tauri::command]
+pub fn startup_settings(app: AppHandle) -> CmdResult<StartupSettings> {
+    let hide = with_db(&app, |c| db::get_setting(c, tray::HIDE_ON_CLOSE))?;
+    Ok(StartupSettings { autostart: tray::autostart_enabled(), hide_on_close: hide.as_deref() != Some("false") })
+}
+
+#[tauri::command]
+pub fn set_autostart(enabled: bool) -> CmdResult<()> {
+    tray::set_autostart(enabled)
+}
+
+#[tauri::command]
+pub fn set_hide_on_close(app: AppHandle, enabled: bool) -> CmdResult<()> {
+    with_db(&app, |c| db::set_setting(c, tray::HIDE_ON_CLOSE, if enabled { "true" } else { "false" }))
 }
 
 // ── Watched folders ─────────────────────────────────────────────────────────

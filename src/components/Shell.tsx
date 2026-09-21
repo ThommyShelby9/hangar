@@ -1,4 +1,6 @@
-import { Outlet } from "react-router";
+import { useEffect } from "react";
+import { Outlet, useNavigate } from "react-router";
+import { listen } from "@tauri-apps/api/event";
 import { Titlebar } from "@/components/Titlebar";
 import { Sidebar } from "@/components/Sidebar";
 import { Toaster } from "@/components/Toaster";
@@ -8,6 +10,14 @@ import { useLibraryEvents } from "@/features/library/queries";
 
 export function Shell() {
   useLibraryEvents();
+  const navigate = useNavigate();
+  // "Mode TV" from the notification-area menu.
+  useEffect(() => {
+    const off = listen("open-tv", () => navigate("/tv"));
+    return () => {
+      off.then((f) => f());
+    };
+  }, [navigate]);
   return (
     <div className="flex h-full flex-col bg-tarmac-glass">
       <Titlebar />

@@ -4,7 +4,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { Check, FolderPlus, X } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/Button";
-import { api } from "@/lib/api";
+import { api, startupApi, type StartupSettings } from "@/lib/api";
 import { toast } from "@/lib/toast";
 
 export function SettingsPage() {
@@ -12,6 +12,7 @@ export function SettingsPage() {
     <>
       <PageHeader title="Réglages" />
       <div className="max-w-3xl space-y-12 px-10 pb-12">
+        <Startup />
         <WatchedFolders />
         <SteamGridDbKey />
         <ApplicationInfo />
@@ -176,5 +177,60 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
       <dt className="text-alu-dim">{label}</dt>
       <dd className="break-all tabular-nums">{children}</dd>
     </div>
+  );
+}
+
+function Startup() {
+  const queryClient = useQueryClient();
+  const { data: settings } = useQuery({ queryKey: ["startup"], queryFn: startupApi.settings });
+  const change = useMutation({
+    mutationFn: async (patch: Partial<StartupSettings>) => {
+      if (patch.autostart !== undefined) await startupApi.setAutostart(patch.autostart);
+      if (patch.hideOnClose !== undefined) await startupApi.setHideOnClose(patch.hideOnClose);
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["startup"] }),
+    onError: toast.error,
+  });
+
+  return (
+    <Section
+      title="Démarrage"
+      description="Hangar ne compte ton temps de jeu que lorsqu'il est ouvert. Ces options le gardent actif en arrière-plan, près de l'horloge."
+    >
+      <div className="space-y-3">
+        <Toggle
+          label="Démarrer Hangar avec Windows (caché près de l'horloge)"
+          checked={settings?.autostart ?? false}
+          onChange={(autostart) => change.mutate({ autostart })}
+        />
+        <Toggle
+          label="La croix de la fenêtre cache Hangar au lieu de le quitter"
+          checked={settings?.hideOnClose ?? true}
+          onChange={(hideOnClose) => change.mutate({ hideOnClose })}
+        />
+      </div>
+    </Section>
+  );
+}
+
+function Toggle({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label className="flex cursor-pointer items-center gap-3">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="size-4 accent-signal"
+      />
+      {label}
+    </label>
   );
 }
