@@ -298,25 +298,30 @@ Chaque phase contient : **objectif**, **fonctionnalités** (cases à cocher), **
 
 **Objectif** : un temps de jeu fiable pour **tous** les jeux, même lancés en dehors du launcher.
 
+> **État (21/09/2026)** : livrée. Test de bout en bout sur une copie portable de test : faux jeu lancé hors de Hangar → session suivie en direct, fermée à la sortie du jeu (91 s), exe appris.
+
 #### 2.1 Surveillance
-- [ ] Surveillance des processus toutes les ~5 s (`sysinfo`), coût CPU négligeable
-- [ ] Distinction **« ce qu'on lance »** / **« ce qu'on surveille »** :
-  - au premier lancement, repérer les nouveaux processus dont l'exe est **dans le dossier du jeu** ;
-  - retenir celui qui reste ouvert le plus longtemps et utilise le GPU ;
-  - le mémoriser dans `tracked_processes` ; choix manuel possible.
-- [ ] **Surveillance par dossier** : le temps est compté même si le jeu est lancé sans le launcher
-- [ ] Jeux Steam/Epic : exe trouvé dans le dossier d'installation (même mécanisme)
-- [ ] Robustesse : session fermée proprement si le PC s'éteint ou si l'appli plante (reprise au redémarrage)
-- [ ] Sessions de moins de 1 minute ignorées (réglable)
+- [x] Surveillance des processus toutes les 5 s (`sysinfo`, chemin des exe uniquement), dans un thread dédié
+- [x] Distinction **« ce qu'on lance »** / **« ce qu'on surveille »** :
+  - tant que rien n'est appris, tout exe **du dossier du jeu** compte (sauf désinstalleurs, crash handlers…) ;
+  - à la fin d'une session, l'exe resté ouvert le plus longtemps est mémorisé dans `tracked_processes` ; ensuite seul lui compte (le launcher est ignoré).
+- [ ] Choix manuel de l'exe surveillé dans « Modifier le jeu »
+- [x] **Processus lancés en administrateur** : leur chemin est invisible, ils sont reconnus par le nom de l'exe
+- [x] **Surveillance par dossier** : le temps est compté même si le jeu est lancé sans le launcher
+- [x] Jeux Steam/Epic : même mécanisme via leur dossier d'installation
+- [x] Robustesse : chaque session a un « battement » toutes les 5 s ; après un plantage ou un arrêt du PC, elle est fermée au dernier battement, ou reprise si le jeu tourne encore au redémarrage de Hangar (< 2 min)
+- [x] Sessions de moins de 1 minute ignorées
+- [ ] Durée minimale réglable
 
 #### 2.2 Affichage
-- [ ] Sur la fiche : temps total, dernière session, nombre de sessions
-- [ ] **Page Stats** :
-  - temps par jour / semaine / mois ;
+- [x] Sur la fiche : temps total, nombre de sessions, dernière session ; bouton « En cours » pendant la partie
+- [x] **Page Stats** (7 jours / 30 jours / 12 mois / tout) :
+  - temps total, sessions, jeux joués ;
+  - temps par jour (ou par mois sur les longues périodes) ;
   - top jeux sur la période ;
-  - **calendrier façon GitHub** (heatmap) ;
-  - historique des sessions.
-- [ ] Tri de la bibliothèque par temps de jeu
+  - **calendrier façon GitHub** sur 12 mois ;
+  - dernières sessions.
+- [x] Tri de la bibliothèque par nom, dernière partie, temps de jeu, date d'ajout ; badge « En cours » sur la jaquette
 
 **Critères de fin**
 - Un jeu lancé via son propre launcher a un temps de jeu correct.

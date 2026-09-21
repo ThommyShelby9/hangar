@@ -234,6 +234,50 @@ mod tests {
         assert_eq!(count, 0, "30 s de jeu ne font pas une session");
     }
 
+    /// End-to-end check on a throw-away portable copy of Hangar:
+    /// `HANGAR_TEST_DB=…\data\hangar.db cargo test seed_test_instance -- --ignored`.
+    #[test]
+    #[ignore]
+    fn seed_test_instance() {
+        let path = std::env::var("HANGAR_TEST_DB").expect("HANGAR_TEST_DB");
+        let mut conn = db::open(std::path::Path::new(&path)).unwrap();
+        crate::library::add_manual_game(
+            &mut conn,
+            &crate::library::NewManualGame {
+                dir: r"O:\tmp\hangar\FakeGame".into(),
+                title: "Fake Game".into(),
+                exe: r"O:\tmp\hangar\FakeGame\FakeGame.exe".into(),
+                extras: vec![],
+            },
+        )
+        .unwrap();
+    }
+
+    #[test]
+    #[ignore]
+    fn print_test_instance() {
+        let path = std::env::var("HANGAR_TEST_DB").expect("HANGAR_TEST_DB");
+        let conn = Connection::open(path).unwrap();
+        let mut stmt = conn
+            .prepare("SELECT game_id, started_at, last_seen_at, ended_at FROM sessions")
+            .unwrap();
+        for row in stmt
+            .query_map([], |r| Ok((r.get::<_, i64>(0)?, r.get::<_, i64>(1)?, r.get::<_, i64>(2)?, r.get::<_, Option<i64>>(3)?)))
+            .unwrap()
+        {
+            let (game, start, seen, end) = row.unwrap();
+            println!("session jeu {game} : {} s, terminée : {}", seen - start, end.is_some());
+        }
+        let learned: Vec<String> = conn
+            .prepare("SELECT exe_name FROM tracked_processes")
+            .unwrap()
+            .query_map([], |r| r.get(0))
+            .unwrap()
+            .collect::<Result<_, _>>()
+            .unwrap();
+        println!("exe appris : {learned:?}");
+    }
+
     #[test]
     fn learns_only_the_first_exe() {
         let conn = conn_with_game();
