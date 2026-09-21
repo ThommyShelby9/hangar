@@ -1,11 +1,13 @@
 mod commands;
 mod controllers;
 mod db;
+mod gallery;
 mod hardware;
 mod launcher;
 mod library;
 mod metadata;
 mod paths;
+mod perf;
 mod scanners;
 mod single_instance;
 mod tracker;
@@ -33,6 +35,8 @@ pub struct AppState {
     pub running: Mutex<HashSet<i64>>,
     /// Created on first use: the hardware page may never be opened.
     pub monitor: Mutex<Option<hardware::Monitor>>,
+    /// Captures the gallery listed: the only files outside the cache the UI may load.
+    pub shots: gallery::Allowed,
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -55,9 +59,20 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .manage(state)
-        // Cached artwork is served as http://hangar.localhost/<path relative to data\cache>.
-        .register_uri_scheme_protocol("hangar", move |_ctx, request| {
-            serve_cache_file(&cache_dir, request.uri().path())
+        // Cached artwork is served as http://hangar.localhost/<path relative to data\cache>, captures
+        // as /~shot?p=<path> and their thumbnails as /~thumb?p=<path>. Off the main thread: a
+        // thumbnail takes a moment to build the first time.
+        .register_asynchronous_uri_scheme_protocol("hangar", move |ctx, request, responder| {
+            let app = ctx.app_handle().clone();
+            let cache_dir = cache_dir.clone();
+            let uri = request.uri().clone();
+            tauri::async_runtime::spawn_blocking(move || {
+                let response = match uri.path() {
+                    "/~shot" | "/~thumb" => serve_shot(&app, &cache_dir, &uri),
+                    path => serve_cache_file(&cache_dir, path),
+                };
+                responder.respond(response);
+            });
         })
         .setup(move |app| {
             // Created here rather than in tauri.conf.json so the WebView2 profile
@@ -143,6 +158,11 @@ pub fn run() {
             commands::startup_settings,
             commands::set_autostart,
             commands::set_hide_on_close,
+            commands::perf_settings,
+            commands::set_perf_setting,
+            commands::list_screenshots,
+            commands::reveal_screenshot,
+            commands::delete_screenshot,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -160,6 +180,7 @@ fn init_state() -> Result<AppState, String> {
         artwork_running: AtomicBool::new(false),
         running: Mutex::new(HashSet::new()),
         monitor: Mutex::new(None),
+        shots: gallery::Allowed::default(),
     })
 }
 
@@ -168,25 +189,53 @@ fn serve_cache_file(cache: &Path, uri_path: &str) -> Response<Vec<u8>> {
     let relative = Path::new(&relative);
     // Only plain names: no "..", no drive letters, no absolute paths.
     let safe = relative.components().all(|c| matches!(c, Component::Normal(_)));
-    let file = safe.then(|| std::fs::read(cache.join(relative)).ok()).flatten();
-    match file {
-        Some(bytes) => {
-            let mime = match relative.extension().and_then(|e| e.to_str()).map(str::to_ascii_lowercase).as_deref() {
-                Some("jpg" | "jpeg") => "image/jpeg",
-                Some("webp") => "image/webp",
-                Some("ico") => "image/x-icon",
-                _ => "image/png",
-            };
-            Response::builder()
-                .header(CONTENT_TYPE, mime)
-                .header("Cache-Control", "max-age=31536000, immutable")
-                // Lets the UI read cover pixels (dominant colour) from a canvas.
-                .header("Access-Control-Allow-Origin", "*")
-                .body(bytes)
-                .unwrap()
-        }
-        None => Response::builder().status(StatusCode::NOT_FOUND).body(Vec::new()).unwrap(),
+    match safe.then(|| std::fs::read(cache.join(relative)).ok()).flatten() {
+        Some(bytes) => image_response(bytes, relative, "max-age=31536000, immutable"),
+        None => not_found(),
     }
+}
+
+/// A capture or its thumbnail, only for files the gallery listed.
+fn serve_shot(app: &tauri::AppHandle, cache: &Path, uri: &tauri::http::Uri) -> Response<Vec<u8>> {
+    let encoded = uri.query().and_then(|q| q.strip_prefix("p=")).unwrap_or_default();
+    let path = std::path::PathBuf::from(urlencoding::decode(encoded).unwrap_or_default().into_owned());
+    if !app.state::<AppState>().shots.contains(&path) {
+        return not_found();
+    }
+    if uri.path() == "/~thumb" {
+        match gallery::thumbnail(&cache.join("thumbs"), &path) {
+            Ok(jpeg) => image_response(jpeg, Path::new("thumb.jpg"), "max-age=300"),
+            Err(e) => {
+                eprintln!("Hangar : miniature de {} impossible : {e}", path.display());
+                not_found()
+            }
+        }
+    } else {
+        match std::fs::read(&path) {
+            Ok(bytes) => image_response(bytes, &path, "max-age=300"),
+            Err(_) => not_found(),
+        }
+    }
+}
+
+fn image_response(bytes: Vec<u8>, name: &Path, cache_control: &str) -> Response<Vec<u8>> {
+    let mime = match name.extension().and_then(|e| e.to_str()).map(str::to_ascii_lowercase).as_deref() {
+        Some("jpg" | "jpeg") => "image/jpeg",
+        Some("webp") => "image/webp",
+        Some("ico") => "image/x-icon",
+        _ => "image/png",
+    };
+    Response::builder()
+        .header(CONTENT_TYPE, mime)
+        .header("Cache-Control", cache_control)
+        // Lets the UI read cover pixels (dominant colour) from a canvas.
+        .header("Access-Control-Allow-Origin", "*")
+        .body(bytes)
+        .unwrap()
+}
+
+fn not_found() -> Response<Vec<u8>> {
+    Response::builder().status(StatusCode::NOT_FOUND).body(Vec::new()).unwrap()
 }
 
 /// Shown before any window exists, so it goes through a native message box.

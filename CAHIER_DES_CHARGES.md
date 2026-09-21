@@ -495,7 +495,7 @@ Pour la DS3, DsHidMini (installé en phase 4) propose déjà son propre mode XIn
 - [ ] **Durée pour finir** (HowLongToBeat)
 - [ ] **Actus et patch notes** (API news Steam, pour les jeux Steam)
 - [ ] **Succès Steam** (Steam Web API, pour les jeux Steam)
-- [ ] **Galerie de captures d'écran** (surveillance des dossiers Steam, Xbox Game Bar, dossiers perso)
+- [x] **Galerie de captures d'écran** : Game Bar, Steam et Impr. écran de Windows, rangées par jeu d'après l'heure des sessions (puis l'app Steam ou le nom de fenêtre) ; miniatures en cache ; visionneuse, « Utiliser comme fond », corbeille. Reste : dossiers perso, clips vidéo
 
 #### Stats
 - [ ] **FPS de session** via **PresentMon** (sans injection) → FPS moyen / 1 % low dans le résumé de session
@@ -503,7 +503,7 @@ Pour la DS3, DsHidMini (installé en phase 4) propose déjà son propre mode XIn
 - [ ] **Alertes de temps de jeu** : limite quotidienne, rappel de pause
 
 #### Confort
-- [ ] **Mode performance au lancement** : mode d'alimentation (`powercfg`), fermeture d'applis gourmandes, Ne pas déranger — restauré à la fermeture du jeu
+- [x] **Mode performance** pendant une partie (même lancée hors de Hangar) : mode d'alimentation « Meilleures performances » (remis ensuite, même après un plantage), priorité du jeu au-dessus de la normale, PC et écran gardés éveillés ; chaque option réglable. Reste : fermeture d'applis gourmandes, Ne pas déranger
 - [ ] **Discord Rich Presence**
 - [x] Icône près de l'horloge (Ouvrir, Mode TV, Quitter) ; la croix cache Hangar au lieu de le quitter (réglable) ; démarrage avec Windows, caché (entrée de registre uniquement) ; une seule instance par dossier de données
 - [ ] Raccourci clavier global

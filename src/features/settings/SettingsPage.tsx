@@ -4,7 +4,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { Check, FolderPlus, X } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/Button";
-import { api, startupApi, type StartupSettings } from "@/lib/api";
+import { api, perfApi, startupApi, type PerfSettings, type StartupSettings } from "@/lib/api";
 import { toast } from "@/lib/toast";
 
 export function SettingsPage() {
@@ -13,6 +13,7 @@ export function SettingsPage() {
       <PageHeader title="Réglages" />
       <div className="max-w-3xl space-y-12 px-10 pb-12">
         <Startup />
+        <Performance />
         <WatchedFolders />
         <SteamGridDbKey />
         <ApplicationInfo />
@@ -207,6 +208,41 @@ function Startup() {
           label="La croix de la fenêtre cache Hangar au lieu de le quitter"
           checked={settings?.hideOnClose ?? true}
           onChange={(hideOnClose) => change.mutate({ hideOnClose })}
+        />
+      </div>
+    </Section>
+  );
+}
+
+function Performance() {
+  const queryClient = useQueryClient();
+  const { data: settings } = useQuery({ queryKey: ["perf"], queryFn: perfApi.settings });
+  const change = useMutation({
+    mutationFn: ({ key, enabled }: { key: keyof PerfSettings; enabled: boolean }) => perfApi.set(key, enabled),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["perf"] }),
+    onError: toast.error,
+  });
+
+  return (
+    <Section
+      title="Pendant une partie"
+      description="Mode performance, appliqué dès qu'un jeu de ta bibliothèque tourne, qu'il soit lancé depuis Hangar ou non, et défait quand le dernier se ferme."
+    >
+      <div className="space-y-3">
+        <Toggle
+          label="Passer Windows en « Meilleures performances », puis remettre le mode d'avant"
+          checked={settings?.power ?? true}
+          onChange={(enabled) => change.mutate({ key: "power", enabled })}
+        />
+        <Toggle
+          label="Donner au jeu une priorité au-dessus de la normale"
+          checked={settings?.priority ?? true}
+          onChange={(enabled) => change.mutate({ key: "priority", enabled })}
+        />
+        <Toggle
+          label="Empêcher la mise en veille de l'écran (utile quand on joue à la manette)"
+          checked={settings?.awake ?? true}
+          onChange={(enabled) => change.mutate({ key: "awake", enabled })}
         />
       </div>
     </Section>

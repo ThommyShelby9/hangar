@@ -1,6 +1,6 @@
 import { NavLink } from "react-router";
 import { motion } from "motion/react";
-import { Activity, Cpu, Gamepad2, LayoutGrid, Settings, type LucideIcon } from "lucide-react";
+import { Activity, Camera, Cpu, Gamepad2, LayoutGrid, Settings, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SidebarMonitor } from "@/components/SidebarMonitor";
 
@@ -13,6 +13,7 @@ interface NavItem {
 const MAIN_NAV: NavItem[] = [
   { to: "/bibliotheque", label: "Bibliothèque", icon: LayoutGrid },
   { to: "/stats", label: "Stats", icon: Activity },
+  { to: "/captures", label: "Captures", icon: Camera },
   { to: "/materiel", label: "Matériel", icon: Cpu },
   { to: "/manettes", label: "Manettes", icon: Gamepad2 },
 ];

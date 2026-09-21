@@ -5,7 +5,7 @@ use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::library::{self, folders, names, GamePatch, LaunchAction, NewManualGame};
 use crate::metadata::{self, sgdb};
-use crate::{controllers, db, hardware, launcher, paths, scanners, tracker, tray, AppState};
+use crate::{controllers, db, gallery, hardware, launcher, paths, perf, scanners, tracker, tray, AppState};
 
 /// Emitted whenever games, images or statuses change; the UI refetches the library.
 pub const LIBRARY_CHANGED: &str = "library-changed";
@@ -448,6 +448,72 @@ pub fn set_autostart(enabled: bool) -> CmdResult<()> {
 #[tauri::command]
 pub fn set_hide_on_close(app: AppHandle, enabled: bool) -> CmdResult<()> {
     with_db(&app, |c| db::set_setting(c, tray::HIDE_ON_CLOSE, if enabled { "true" } else { "false" }))
+}
+
+// ── Performance mode ────────────────────────────────────────────────────────
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PerfSettings {
+    power: bool,
+    priority: bool,
+    awake: bool,
+}
+
+#[tauri::command]
+pub fn perf_settings(app: AppHandle) -> CmdResult<PerfSettings> {
+    let o = with_db(&app, |c| perf::options(c))?;
+    Ok(PerfSettings { power: o.power, priority: o.priority, awake: o.awake })
+}
+
+/// `key` is "power", "priority" or "awake"; the tracker applies the change on its next tick.
+#[tauri::command]
+pub fn set_perf_setting(app: AppHandle, key: String, enabled: bool) -> CmdResult<()> {
+    let setting = match key.as_str() {
+        "power" => perf::POWER,
+        "priority" => perf::PRIORITY,
+        "awake" => perf::AWAKE,
+        _ => return Err(format!("réglage inconnu : {key}")),
+    };
+    with_db(&app, |c| db::set_setting(c, setting, if enabled { "true" } else { "false" }))
+}
+
+// ── Screenshot gallery ──────────────────────────────────────────────────────
+
+#[tauri::command]
+pub async fn list_screenshots(app: AppHandle) -> CmdResult<Vec<gallery::Shot>> {
+    let known = with_db(&app, |c| gallery::Known::load(c))?;
+    // The capture folders are read without holding the database.
+    let shots = tauri::async_runtime::spawn_blocking(move || gallery::list(&known)).await.map_err(err)?;
+    app.state::<AppState>().shots.replace(&shots);
+    Ok(shots)
+}
+
+fn listed_shot(app: &AppHandle, path: &str) -> CmdResult<PathBuf> {
+    let path = PathBuf::from(path);
+    if app.state::<AppState>().shots.contains(&path) {
+        Ok(path)
+    } else {
+        Err("Capture inconnue : rouvre la galerie.".into())
+    }
+}
+
+#[tauri::command]
+pub fn reveal_screenshot(app: AppHandle, path: String) -> CmdResult<()> {
+    let path = listed_shot(&app, &path)?;
+    std::process::Command::new("explorer.exe")
+        .arg(format!("/select,{}", path.display()))
+        .spawn()
+        .map(|_| ())
+        .map_err(err)
+}
+
+#[tauri::command]
+pub fn delete_screenshot(app: AppHandle, path: String) -> CmdResult<()> {
+    let path = listed_shot(&app, &path)?;
+    library::manage::recycle(&path)?;
+    app.state::<AppState>().shots.remove(&path);
+    Ok(())
 }
 
 // ── Watched folders ─────────────────────────────────────────────────────────

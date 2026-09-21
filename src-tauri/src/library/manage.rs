@@ -81,13 +81,13 @@ fn find_uninstaller(dir: &Path) -> Option<PathBuf> {
     })
 }
 
-/// Sends a folder to the Recycle Bin (recoverable), with Windows' own progress window.
+/// Sends a folder or a file to the Recycle Bin (recoverable), with Windows' own progress window.
 #[cfg(windows)]
 pub fn recycle(dir: &Path) -> Result<(), String> {
     use windows_sys::Win32::UI::Shell::{
         SHFileOperationW, FOF_ALLOWUNDO, FOF_NOCONFIRMATION, FO_DELETE, SHFILEOPSTRUCTW,
     };
-    if !dir.is_dir() {
+    if !dir.exists() {
         return Err(format!("{} n'existe plus.", dir.display()));
     }
     // Double NUL-terminated list of paths.

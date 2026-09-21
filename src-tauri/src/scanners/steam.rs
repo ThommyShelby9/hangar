@@ -15,7 +15,7 @@ pub fn scan() -> Vec<PlatformGame> {
 }
 
 #[cfg(windows)]
-fn steam_path() -> Option<PathBuf> {
+pub fn steam_path() -> Option<PathBuf> {
     use winreg::{enums::HKEY_CURRENT_USER, RegKey};
     let key = RegKey::predef(HKEY_CURRENT_USER).open_subkey(r"Software\Valve\Steam").ok()?;
     let path: String = key.get_value("SteamPath").ok()?;
@@ -24,7 +24,7 @@ fn steam_path() -> Option<PathBuf> {
 }
 
 #[cfg(not(windows))]
-fn steam_path() -> Option<PathBuf> {
+pub fn steam_path() -> Option<PathBuf> {
     None
 }
 

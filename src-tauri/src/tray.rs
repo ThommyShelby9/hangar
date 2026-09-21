@@ -5,7 +5,7 @@ use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Emitter, Manager, WebviewWindow, WindowEvent};
 
-use crate::{db, webview_memory, AppState};
+use crate::{db, perf, webview_memory, AppState};
 
 /// Launch argument used by the Windows start-up entry: start hidden in the notification area.
 pub const MINIMIZED_ARG: &str = "--minimized";
@@ -30,7 +30,13 @@ pub fn install(app: &AppHandle, window: &WebviewWindow) -> tauri::Result<()> {
                 show(app);
                 let _ = app.emit("open-tv", ());
             }
-            "quit" => app.exit(0),
+            "quit" => {
+                // The power mode would otherwise stay changed until the next start-up.
+                if let Ok(conn) = app.state::<AppState>().db.lock() {
+                    let _ = perf::restore_power_mode(&conn);
+                }
+                app.exit(0);
+            }
             _ => {}
         })
         .on_tray_icon_event(|tray, event| {

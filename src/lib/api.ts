@@ -329,3 +329,32 @@ export const startupApi = {
   setAutostart: (enabled: boolean) => invoke<void>("set_autostart", { enabled }),
   setHideOnClose: (enabled: boolean) => invoke<void>("set_hide_on_close", { enabled }),
 };
+
+export interface PerfSettings {
+  power: boolean;
+  priority: boolean;
+  awake: boolean;
+}
+
+export const perfApi = {
+  settings: () => invoke<PerfSettings>("perf_settings"),
+  set: (key: keyof PerfSettings, enabled: boolean) => invoke<void>("set_perf_setting", { key, enabled }),
+};
+
+export interface Shot {
+  path: string;
+  /** null: a Game Bar capture of something that isn't in the library. */
+  gameId: number | null;
+  takenAt: number;
+  source: "gamebar" | "windows" | "steam";
+}
+
+const shotParam = (path: string) => `?p=${encodeURIComponent(path)}`;
+
+export const shotsApi = {
+  list: () => invoke<Shot[]>("list_screenshots"),
+  reveal: (path: string) => invoke<void>("reveal_screenshot", { path }),
+  remove: (path: string) => invoke<void>("delete_screenshot", { path }),
+  thumbUrl: (path: string) => `http://hangar.localhost/~thumb${shotParam(path)}`,
+  url: (path: string) => `http://hangar.localhost/~shot${shotParam(path)}`,
+};

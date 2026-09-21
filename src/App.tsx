@@ -4,6 +4,7 @@ import { HashRouter, Navigate, Route, Routes } from "react-router";
 import { Shell } from "@/components/Shell";
 import { LibraryPage } from "@/features/library/LibraryPage";
 import { StatsPage } from "@/features/stats/StatsPage";
+import { GalleryPage } from "@/features/gallery/GalleryPage";
 import { HardwarePage } from "@/features/hardware/HardwarePage";
 import { ControllersPage } from "@/features/controllers/ControllersPage";
 import { SettingsPage } from "@/features/settings/SettingsPage";
@@ -24,6 +25,7 @@ export default function App() {
               <Route path="bibliotheque" element={<LibraryPage />} />
               <Route path="jeu/:id" element={<GamePage />} />
               <Route path="stats" element={<StatsPage />} />
+              <Route path="captures" element={<GalleryPage />} />
               <Route path="materiel" element={<HardwarePage />} />
               <Route path="manettes" element={<ControllersPage />} />
               <Route path="reglages" element={<SettingsPage />} />

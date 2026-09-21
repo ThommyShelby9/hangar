@@ -12,7 +12,7 @@ use rusqlite::{params, Connection};
 use sysinfo::{ProcessRefreshKind, ProcessesToUpdate, System, UpdateKind};
 use tauri::{AppHandle, Emitter, Manager};
 
-use crate::{commands, db, hardware, AppState};
+use crate::{commands, db, hardware, perf, AppState};
 use matcher::{game_for, install_dir_key, RunningProcess, WatchedGame};
 use sessions::{Event, Sessions, MIN_SESSION_SECS};
 
@@ -42,6 +42,9 @@ fn run(app: AppHandle) {
     let mut system = System::new();
     let mut sessions = Sessions::default();
     let mut resumable = with_db(&app, |c| recover(c, db::now())).unwrap_or_default();
+    let mut perf_mode = perf::PerfMode::default();
+    // Left over by a crash or a forced exit; re-applied below if a game still runs.
+    with_db(&app, perf::restore_power_mode);
 
     loop {
         let games = with_db(&app, watched_games).unwrap_or_default();
@@ -52,6 +55,7 @@ fn run(app: AppHandle) {
         );
 
         let mut seen: HashMap<i64, Vec<String>> = HashMap::new();
+        let mut game_pids = Vec::new();
         for (pid, process) in system.processes() {
             if Some(*pid) == own_pid {
                 continue;
@@ -61,6 +65,7 @@ fn run(app: AppHandle) {
                 path: process.exe().map(|p| p.display().to_string().to_lowercase()),
             };
             if let Some(game_id) = game_for(&running, &games) {
+                game_pids.push(pid.as_u32());
                 let exes = seen.entry(game_id).or_default();
                 if !exes.contains(&running.name) {
                     exes.push(running.name);
@@ -102,6 +107,8 @@ fn run(app: AppHandle) {
             }
             Ok(())
         });
+
+        with_db(&app, |c| perf_mode.update(c, &game_pids));
 
         // Hardware readings while something runs: kept with the session for its summary.
         if !sessions.running().is_empty() {
