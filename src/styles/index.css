@@ -1,0 +1,77 @@
+@import "tailwindcss";
+@import "@fontsource-variable/archivo/wdth";
+@import "@fontsource-variable/big-shoulders-display";
+@import "@fontsource-variable/big-shoulders-stencil-display";
+
+/*
+ * Hangar design tokens.
+ * Inside an aircraft hangar: anodised aluminium, painted floor markings under sodium light,
+ * zinc-chromate primer on the airframes.
+ *   signal  → actions, focus, the "take-off" button (taxiway-sign amber)
+ *   primer  → running / healthy states
+ *   flare   → destructive actions and errors
+ */
+@theme {
+  --font-sans: "Archivo Variable", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  --font-display: "Big Shoulders Display Variable", "Bahnschrift", "Arial Narrow", sans-serif;
+  --font-stencil:
+    "Big Shoulders Stencil Display Variable", "Big Shoulders Display Variable", "Bahnschrift",
+    sans-serif;
+
+  --color-tarmac: #1b242b;
+  --color-tarmac-glass: rgb(22 30 36 / 0.72);
+  --color-bay: #232e36;
+  --color-rivet: #34424c;
+  --color-alu: #d5dce0;
+  --color-alu-dim: #8b99a3;
+  --color-signal: #f4b63f;
+  --color-signal-ink: #2a1d05;
+  --color-primer: #a3b45c;
+  --color-flare: #e0654a;
+
+  --radius-panel: 12px;
+  --radius-control: 6px;
+
+  /* Type scale — 1.25 ratio from a 14px body */
+  --text-caption: 0.8125rem;
+  --text-body: 0.875rem;
+  --text-lead: 1.0625rem;
+  --text-title: 1.375rem;
+  --text-page: 3rem;
+  --text-page--line-height: 0.95;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  /* Transparent so the Mica window effect shows through the sidebar. */
+  html,
+  body {
+    background: transparent;
+  }
+
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    font-variation-settings: "wdth" 100;
+    color: var(--color-alu);
+    -webkit-font-smoothing: antialiased;
+    user-select: none;
+    overflow: hidden;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-signal);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: var(--color-signal);
+    color: var(--color-signal-ink);
+  }
+}

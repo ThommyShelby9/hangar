@@ -106,7 +106,7 @@ Le dossier `target/` de Rust reste dans le projet (sur O:).
 | Graphiques | **Recharts** (ou **visx** si besoin de plus de contrôle) |
 | État côté interface | **Zustand** + **TanStack Query** (appels au backend) |
 | Base de données | **SQLite** via `rusqlite` (migrations versionnées) |
-| Effet de fenêtre | crate `window-vibrancy` (Mica / Acrylic) + barre de titre personnalisée |
+| Effet de fenêtre | Effets de fenêtre intégrés à Tauri 2 (Mica) + barre de titre personnalisée |
 | Recherche | `fuse.js` |
 | Couleurs dynamiques | `fast-average-color` (ou extraction côté Rust) |
 
@@ -204,16 +204,16 @@ Chaque phase contient : **objectif**, **fonctionnalités** (cases à cocher), **
 
 **Objectif** : un projet qui compile, s'ouvre en fenêtre soignée, et respecte la contrainte « rien sur C: » dès le premier jour.
 
-- [ ] Création du projet Tauri 2 « Hangar » + React + TypeScript + Vite
-- [ ] Tailwind CSS, shadcn/ui, Motion, ESLint, Prettier
-- [ ] Module `paths.rs` : tous les chemins calculés depuis le dossier de l'exe + test « aucun chemin sur C: »
-- [ ] Dossier de données du WebView2 forcé dans `data\webview\`
-- [ ] Fenêtre sans cadre, barre de titre personnalisée, effet Mica
-- [ ] Tokens de design : couleurs, espacements, rayons, polices
-- [ ] Structure de navigation : Bibliothèque, Stats, Matériel, Manettes, Réglages (pages vides)
-- [ ] SQLite + système de migrations
-- [ ] Build **portable** (exe seul, sans installeur)
-- [ ] Initialisation du dépôt Git
+- [x] Création du projet Tauri 2 « Hangar » + React + TypeScript + Vite
+- [x] Tailwind CSS, shadcn/ui (configuré, composants ajoutés au besoin), Motion, ESLint, Prettier
+- [x] Module `paths.rs` : tous les chemins calculés depuis le dossier de l'exe + test « aucun chemin sur C: »
+- [x] Dossier de données du WebView2 forcé dans `data\webview\`
+- [x] Fenêtre sans cadre, barre de titre personnalisée, effet Mica
+- [x] Tokens de design : couleurs, espacements, rayons, polices
+- [x] Structure de navigation : Bibliothèque, Stats, Matériel, Manettes, Réglages (pages vides)
+- [x] SQLite + système de migrations
+- [x] Build **portable** (exe seul, sans installeur)
+- [x] Initialisation du dépôt Git
 
 **Critères de fin**
 - L'exe portable, copié dans un dossier sur O:, s'ouvre et affiche la fenêtre de navigation.
