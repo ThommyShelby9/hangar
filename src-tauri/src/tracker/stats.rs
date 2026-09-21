@@ -177,6 +177,42 @@ pub fn overview(conn: &Connection, since: i64) -> rusqlite::Result<Overview> {
     Ok(Overview { total_secs, session_count, games_played, daily, top_games, recent })
 }
 
+/// One session, for the monthly recap (computed by the UI).
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionRow {
+    pub game_id: i64,
+    pub title: String,
+    pub started_at: i64,
+    pub duration_secs: i64,
+    pub grid: Option<String>,
+    /// The very first session of this game: a discovery.
+    pub first_ever: bool,
+}
+
+/// Sessions started in [from, to), oldest first.
+pub fn sessions_between(conn: &Connection, from: i64, to: i64) -> rusqlite::Result<Vec<SessionRow>> {
+    conn.prepare(&format!(
+        "SELECT g.id, g.title, s.started_at, {DURATION},
+                (SELECT file FROM game_images i WHERE i.game_id = g.id AND i.kind = 'grid'),
+                s.started_at = (SELECT MIN(started_at) FROM sessions f WHERE f.game_id = s.game_id)
+         FROM sessions s JOIN games g ON g.id = s.game_id
+         WHERE s.started_at >= ?1 AND s.started_at < ?2
+         ORDER BY s.started_at"
+    ))?
+    .query_map(params![from, to], |r| {
+        Ok(SessionRow {
+            game_id: r.get(0)?,
+            title: r.get(1)?,
+            started_at: r.get(2)?,
+            duration_secs: r.get(3)?,
+            grid: r.get(4)?,
+            first_ever: r.get(5)?,
+        })
+    })?
+    .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

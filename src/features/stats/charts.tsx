@@ -1,7 +1,8 @@
 import { useState, type ReactNode } from "react";
 import { Link } from "react-router";
+import { Flame } from "lucide-react";
 import { imageUrl, type StatsOverview } from "@/lib/api";
-import { dayKey, formatDay, formatDuration } from "@/lib/format";
+import { dayKey, formatDay, formatDuration, parseDay } from "@/lib/format";
 import { monthLabel, type Column } from "@/features/stats/columns";
 import { cn } from "@/lib/utils";
 
@@ -153,7 +154,8 @@ export function PlayCalendar({ daily }: { daily: StatsOverview["daily"] }) {
           })}
         </div>
       </div>
-      <figcaption className="mt-3 flex items-center gap-1.5 text-caption text-alu-dim">
+      <figcaption className="mt-3 flex flex-wrap items-center gap-1.5 text-caption text-alu-dim">
+        <Streaks daily={daily} />
         Moins
         {LEVELS.map((l) => (
           <span key={l.label} title={l.label} className={cn("size-3 rounded-[2px]", l.className)} />
@@ -162,6 +164,51 @@ export function PlayCalendar({ daily }: { daily: StatsOverview["daily"] }) {
       </figcaption>
       {node}
     </figure>
+  );
+}
+
+/** Consecutive days played: the current run (today or up to yesterday) and the best one. */
+function streaks(days: string[], today = new Date()): { current: number; best: number } {
+  const played = new Set(days);
+  let best = 0;
+  let run = 0;
+  let previous: Date | null = null;
+  for (const day of [...played].sort()) {
+    const date = parseDay(day);
+    const next =
+      previous && new Date(previous.getFullYear(), previous.getMonth(), previous.getDate() + 1);
+    run = next && dayKey(next) === day ? run + 1 : 1;
+    best = Math.max(best, run);
+    previous = date;
+  }
+  // Today not played yet: the run still counts until tonight.
+  const cursor = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  if (!played.has(dayKey(cursor))) cursor.setDate(cursor.getDate() - 1);
+  let current = 0;
+  while (played.has(dayKey(cursor))) {
+    current++;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return { current, best };
+}
+
+function Streaks({ daily }: { daily: StatsOverview["daily"] }) {
+  const days = daily.filter((d) => d.secs > 0).map((d) => d.day);
+  const { current, best } = streaks(days);
+  const plural = (n: number) => `${n} jour${n > 1 ? "s" : ""}`;
+  return (
+    <span className="mr-auto flex flex-wrap gap-x-5 text-alu">
+      <span>
+        <Flame size={14} className="mr-1 inline text-signal" />
+        Série en cours : <strong className="tabular-nums">{plural(current)}</strong>
+      </span>
+      <span className="text-alu-dim">
+        Record : <span className="tabular-nums">{plural(best)}</span>
+      </span>
+      <span className="text-alu-dim">
+        {plural(days.length)} de jeu en un an
+      </span>
+    </span>
   );
 }
 

@@ -6,6 +6,7 @@ mod hardware;
 mod launcher;
 mod library;
 mod metadata;
+mod pads;
 mod paths;
 mod perf;
 mod saves;
@@ -109,7 +110,8 @@ pub fn run() {
                 if let Err(e) = commands::scan_platforms(handle.clone()).await {
                     eprintln!("Hangar : scan des plateformes impossible : {e}");
                 }
-                commands::announce_new_games(handle).await;
+                commands::announce_new_games(handle.clone()).await;
+                commands::look_up_pad_support(handle).await;
             });
             Ok(())
         })
@@ -149,6 +151,7 @@ pub fn run() {
             commands::running_games,
             commands::game_stats,
             commands::stats_overview,
+            commands::sessions_between,
             commands::hardware_info,
             commands::hardware_snapshot,
             commands::enable_cpu_sensors,
@@ -171,6 +174,10 @@ pub fn run() {
             commands::backup_game_saves,
             commands::restore_game_saves,
             commands::set_game_save_dir,
+            commands::game_pad,
+            commands::set_game_pad,
+            commands::pads_enabled,
+            commands::set_pads_enabled,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -477,8 +477,8 @@ Pour la DS3, DsHidMini (installé en phase 4) propose déjà son propre mode XIn
 - [ ] **Zones mortes** par stick et par gâchette, dessinées sur le cercle du stick
 - [ ] **Courbes de réponse** : linéaire, exponentielle, personnalisée (éditeur visuel)
 - [ ] **Réassignation des boutons**
-- [ ] **Profils par jeu**, activés automatiquement au lancement du jeu (grâce au suivi de la phase 2)
-- [ ] Interrupteur **« désactiver l'émulation pour ce jeu »** (anti-cheat, jeux compatibles PlayStation nativement)
+- [x] **Profils par jeu**, activés automatiquement au lancement du jeu, comme Steam Input : Hangar pilote DS4Windows (qui garde l'émulation, cf. décision « cohabiter ») et charge temporairement le profil DS4 pour les jeux qui reconnaissent les manettes PlayStation (d'après PCGamingWiki), le profil Xbox pour les autres ; profils habituels rétablis à la fermeture ; choix forcé ou « ne rien changer » jeu par jeu. Reste à vérifier avec une manette allumée
+- [x] Interrupteur **« ne rien changer pour ce jeu »** (anti-cheat…) : option « Ne rien changer » du choix de profil
 - [ ] Détection de conflit avec **Steam Input** et **DS4Windows** (avertissement)
 
 **Critères de fin**
@@ -499,7 +499,10 @@ Pour la DS3, DsHidMini (installé en phase 4) propose déjà son propre mode XIn
 
 #### Stats
 - [ ] **FPS de session** via **PresentMon** (sans injection) → FPS moyen / 1 % low dans le résumé de session
-- [ ] **Bilan annuel** façon « Wrapped »
+- [x] **Rétro du mois** façon « Wrapped » (jeu du mois, temps et tendance, jours de jeu, profil « oiseau de nuit »…, plus longue session, découvertes, classement). Reste : bilan annuel
+- [x] **Série de jours de jeu** sous le calendrier (en cours, record)
+- [x] **« Je lance quoi ? »** : roulette de jaquettes qui favorise les jeux délaissés ou jamais lancés
+- [x] **Progression par jeu** (à commencer, en cours, terminé, 100 %, abandonné), note sur 5 et notes perso ; filtres dans la Bibliothèque
 - [ ] **Alertes de temps de jeu** : limite quotidienne, rappel de pause
 
 #### Confort

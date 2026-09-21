@@ -14,7 +14,9 @@ import { formatDateTime, formatDuration, formatShortDate } from "@/lib/format";
 import { EditGameDialog } from "@/features/game/EditGameDialog";
 import { ArtworkDialog } from "@/features/game/ArtworkDialog";
 import { GameShots } from "@/features/gallery/GameShots";
+import { GameProgress } from "@/features/game/GameProgress";
 import { GameSaves } from "@/features/saves/GameSaves";
+import { GamePad } from "@/features/controllers/GamePad";
 
 const SOURCE_LABEL: Record<GameDetail["source"], string> = {
   manual: "Ajouté à la main",
@@ -191,8 +193,10 @@ function GameView({ game }: { game: GameDetail }) {
         />
       </section>
 
+      <GameProgress key={game.id} game={game} />
       <GameShots game={game} />
       <GameSaves game={game} />
+      <GamePad game={game} />
 
       <dl className="grid max-w-3xl grid-cols-[10rem_1fr] gap-x-6 gap-y-3 px-10 py-8">
         <dt className="text-alu-dim">Provenance</dt>

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { BatteryCharging, BatteryMedium, Bluetooth, Cable, Info } from "lucide-react";
-import { controllersApi, type PadInfo, type PadInput } from "@/lib/api";
+import { controllersApi, padsApi, type PadInfo, type PadInput } from "@/lib/api";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/PageHeader";
@@ -17,6 +18,35 @@ const KIND_LABEL: Record<PadInfo["kind"], string> = {
   switch: "Manette Switch",
   other: "Manette",
 };
+
+/** Steam Input's idea with DS4Windows: each game gets the virtual controller it understands. */
+function PerGameProfiles() {
+  const queryClient = useQueryClient();
+  const { data: enabled } = useQuery({ queryKey: ["pads-enabled"], queryFn: padsApi.enabled });
+  const change = useMutation({
+    mutationFn: padsApi.setEnabled,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["pads-enabled"] }),
+    onError: toast.error,
+  });
+  return (
+    <label className="flex max-w-3xl cursor-pointer items-start gap-3">
+      <input
+        type="checkbox"
+        checked={enabled ?? true}
+        onChange={(e) => change.mutate(e.target.checked)}
+        className="mt-1 size-4 accent-signal"
+      />
+      <span>
+        Configurer la manette selon le jeu, comme Steam Input
+        <span className="block text-caption text-alu-dim">
+          Au lancement d'un jeu, DS4Windows passe sur le profil qui lui convient : manette PlayStation
+          pour les jeux qui la reconnaissent (d'après PCGamingWiki), manette Xbox pour les autres. Tes
+          profils habituels reviennent quand tu quittes le jeu. Réglable jeu par jeu sur sa page.
+        </span>
+      </span>
+    </label>
+  );
+}
 
 export function ControllersPage() {
   const { data: status } = useControllers();
@@ -38,6 +68,7 @@ export function ControllersPage() {
             HidHide pour voir la vraie DS4.
           </p>
         )}
+        {status?.ds4windows && <PerGameProfiles />}
 
         {!pad ? (
           <EmptyState title="Aucune manette connectée">

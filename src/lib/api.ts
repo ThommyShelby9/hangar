@@ -9,6 +9,9 @@ export interface AppInfo {
 
 export type ArtKind = "grid" | "hero" | "logo" | "icon";
 
+/** Where the player is with a game. */
+export type Progress = "todo" | "playing" | "done" | "completed" | "dropped";
+
 export interface Game {
   id: number;
   title: string;
@@ -22,6 +25,9 @@ export interface Game {
   addedAt: number;
   lastPlayedAt: number | null;
   playtimeSecs: number;
+  progress: Progress | null;
+  /** 1 to 5 stars. */
+  rating: number | null;
   /** Ids of the collections the game belongs to. */
   collections: number[];
   /** Files relative to the cache folder, see `imageUrl`. */
@@ -40,6 +46,7 @@ export interface LaunchAction {
 
 export interface GameDetail extends Game {
   actions: LaunchAction[];
+  notes: string | null;
 }
 
 export interface ExeCandidate {
@@ -76,6 +83,11 @@ export interface GamePatch {
   title?: string;
   favorite?: boolean;
   hidden?: boolean;
+  /** "" clears it. */
+  progress?: Progress | "";
+  /** 0 clears it. */
+  rating?: number;
+  notes?: string;
 }
 
 export interface SgdbGame {
@@ -181,6 +193,8 @@ export const statsApi = {
   runningGames: () => invoke<number[]>("running_games"),
   gameStats: (id: number) => invoke<GameStats>("game_stats", { id }),
   overview: (days: number | null) => invoke<StatsOverview>("stats_overview", { days }),
+  /** Sessions started in [from, to) (Unix seconds), oldest first. */
+  sessionsBetween: (from: number, to: number) => invoke<SessionRow[]>("sessions_between", { from, to }),
 };
 
 export interface HardwareInfo {
@@ -403,3 +417,37 @@ export const savesApi = {
   restore: (id: number, backup: string) => invoke<void>("restore_game_saves", { id, backup }),
   setDir: (id: number, dir: string | null) => invoke<void>("set_game_save_dir", { id, dir }),
 };
+
+export interface PadProfile {
+  name: string;
+  /** What games see: "DS4", "X360"… */
+  output: string;
+}
+
+export interface GamePadInfo {
+  enabled: boolean;
+  ds4windows: boolean;
+  profiles: PadProfile[];
+  /** null: automatic; "": leave DS4Windows alone. */
+  choice: string | null;
+  psNative: boolean | null;
+  /** The profile the game gets when it starts. */
+  picked: string | null;
+}
+
+export const padsApi = {
+  game: (id: number) => invoke<GamePadInfo>("game_pad", { id }),
+  set: (id: number, profile: string | null) => invoke<void>("set_game_pad", { id, profile }),
+  enabled: () => invoke<boolean>("pads_enabled"),
+  setEnabled: (enabled: boolean) => invoke<void>("set_pads_enabled", { enabled }),
+};
+
+export interface SessionRow {
+  gameId: number;
+  title: string;
+  startedAt: number;
+  durationSecs: number;
+  grid: string | null;
+  /** The very first session of this game. */
+  firstEver: boolean;
+}

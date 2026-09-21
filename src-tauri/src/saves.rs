@@ -13,7 +13,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Mutex;
 
-use rusqlite::{params, Connection};
+use rusqlite::{params, Connection, OptionalExtension};
 use serde::Serialize;
 use serde_json::Value;
 
@@ -442,6 +442,14 @@ pub fn restore(paths: &AppPaths, conn: &Mutex<Connection>, game_id: i64, backup_
         return Err("certains fichiers n'ont pas pu être remis en place".into());
     }
     Ok(())
+}
+
+/// Ludusavi's name for the game, when it was looked up and found.
+pub fn known_name(conn: &Connection, game_id: i64) -> rusqlite::Result<Option<String>> {
+    let name: Option<Option<String>> = conn
+        .query_row("SELECT ludusavi_name FROM game_saves WHERE game_id = ?1", [game_id], |r| r.get(0))
+        .optional()?;
+    Ok(name.flatten().filter(|n| !n.is_empty()))
 }
 
 pub fn set_custom_dir(conn: &Connection, game_id: i64, dir: Option<&str>) -> rusqlite::Result<()> {

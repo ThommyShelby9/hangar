@@ -4,8 +4,10 @@ import { AnimatePresence, motion } from "motion/react";
 import Fuse from "fuse.js";
 import { open } from "@tauri-apps/plugin-dialog";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
-import { FolderSearch, Plus, Search } from "lucide-react";
-import { api, manageApi, type FolderCandidate, type Game } from "@/lib/api";
+import { Dices, FolderSearch, Plus, Search } from "lucide-react";
+import { api, manageApi, type FolderCandidate, type Game, type Progress } from "@/lib/api";
+import { PROGRESS_LABEL } from "@/features/game/progress";
+import { Roulette } from "@/features/library/Roulette";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/Button";
@@ -20,12 +22,13 @@ import {
 import { GameCard } from "@/features/library/GameCard";
 import { ImportDialog } from "@/features/library/ImportDialog";
 
-type Filter = "all" | "favorites" | "missing" | `collection-${number}`;
+type Filter = "all" | "favorites" | "missing" | `progress-${Progress}` | `collection-${number}`;
 
 function matchesFilter(game: Game, filter: Filter) {
   if (filter === "all") return true;
   if (filter === "favorites") return game.favorite;
   if (filter === "missing") return game.status === "missing";
+  if (filter.startsWith("progress-")) return game.progress === filter.slice("progress-".length);
   return game.collections.includes(Number(filter.slice("collection-".length)));
 }
 
@@ -54,6 +57,7 @@ export function LibraryPage() {
   const newGames = useNewGamesCount();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
+  const [roulette, setRoulette] = useState(false);
   const [sort, setSort] = useState<Sort>("title");
   const running = useRunningGames();
   const [candidates, setCandidates] = useState<FolderCandidate[] | null>(null);
@@ -87,6 +91,10 @@ export function LibraryPage() {
     ["all", "Tous"],
     ["favorites", "Favoris"],
     ...(missingCount > 0 ? ([["missing", "Introuvables"]] as [Filter, string][]) : []),
+    // Only the statuses in use: an empty "Abandonné" chip would be noise.
+    ...(Object.keys(PROGRESS_LABEL) as Progress[])
+      .filter((p) => games.some((g) => g.progress === p))
+      .map((p): [Filter, string] => [`progress-${p}`, PROGRESS_LABEL[p]]),
     ...collections.map((c): [Filter, string] => [`collection-${c.id}`, c.name]),
   ];
 
@@ -110,6 +118,12 @@ export function LibraryPage() {
 
   const actions = (
     <>
+      {games.filter((g) => !g.hidden && g.status === "ok").length >= 2 && (
+        <Button variant="primary" onClick={() => setRoulette(true)}>
+          <Dices size={16} />
+          Je lance quoi ?
+        </Button>
+      )}
       <Button onClick={() => scan.mutate()} disabled={scan.isPending}>
         <FolderSearch size={16} />
         {scan.isPending ? "Recherche…" : "Chercher des jeux"}
@@ -258,6 +272,7 @@ export function LibraryPage() {
       </AnimatePresence>
 
       {candidates && <ImportDialog candidates={candidates} onClose={() => setCandidates(null)} />}
+      {roulette && <Roulette games={games} onClose={() => setRoulette(false)} />}
     </div>
   );
 }

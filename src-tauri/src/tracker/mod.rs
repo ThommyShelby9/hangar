@@ -12,7 +12,7 @@ use rusqlite::{params, Connection};
 use sysinfo::{ProcessRefreshKind, ProcessesToUpdate, System, UpdateKind};
 use tauri::{AppHandle, Emitter, Manager};
 
-use crate::{commands, db, hardware, perf, saves, AppState};
+use crate::{commands, db, hardware, pads, perf, saves, AppState};
 use matcher::{game_for, install_dir_key, RunningProcess, WatchedGame};
 use sessions::{Event, Sessions, MIN_SESSION_SECS};
 
@@ -123,6 +123,17 @@ fn run(app: AppHandle) {
         for summary in ended {
             backup_after_session(&app, summary.game_id, summary.title.clone());
             let _ = app.emit(SESSION_ENDED, summary);
+        }
+
+        // DS4Windows follows the games: the profile of the one that starts, the usual ones when all close.
+        for event in &events {
+            if let Event::Started { game_id } = event {
+                let (app, game_id) = (app.clone(), *game_id);
+                std::thread::spawn(move || pads::game_started(&app.state::<AppState>().db, game_id));
+            }
+        }
+        if changed && sessions.running().is_empty() {
+            std::thread::spawn(pads::games_stopped);
         }
 
         if changed {

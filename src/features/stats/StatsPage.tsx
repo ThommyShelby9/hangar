@@ -5,6 +5,9 @@ import { statsApi } from "@/lib/api";
 import { formatDateTime, formatDuration } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/PageHeader";
+import { Button } from "@/components/Button";
+import { Sparkles } from "lucide-react";
+import { RecapDialog } from "@/features/stats/RecapDialog";
 import { EmptyState } from "@/components/EmptyState";
 import { PlayCalendar, PlayColumns, TopGames } from "@/features/stats/charts";
 import { buildColumns } from "@/features/stats/columns";
@@ -20,6 +23,7 @@ type Days = (typeof PERIODS)[number]["days"];
 
 export function StatsPage() {
   const [days, setDays] = useState<Days>(30);
+  const [recap, setRecap] = useState(false);
   const { data } = useQuery({
     queryKey: ["stats", "overview", days],
     queryFn: () => statsApi.overview(days),
@@ -51,26 +55,32 @@ export function StatsPage() {
       <PageHeader
         title="Stats"
         actions={
-          <div role="radiogroup" aria-label="Période" className="flex gap-1">
-            {PERIODS.map((p) => (
-              <button
-                key={p.label}
-                role="radio"
-                aria-checked={days === p.days}
-                onClick={() => setDays(p.days)}
-                className={cn(
-                  "h-9 rounded-control px-3.5 transition-colors",
-                  days === p.days
-                    ? "bg-rivet/60 text-alu"
-                    : "text-alu-dim hover:bg-rivet/30 hover:text-alu",
-                )}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
+          <>
+            <Button variant="primary" onClick={() => setRecap(true)}>
+              <Sparkles size={16} /> Rétro du mois
+            </Button>
+            <div role="radiogroup" aria-label="Période" className="flex gap-1">
+              {PERIODS.map((p) => (
+                <button
+                  key={p.label}
+                  role="radio"
+                  aria-checked={days === p.days}
+                  onClick={() => setDays(p.days)}
+                  className={cn(
+                    "h-9 rounded-control px-3.5 transition-colors",
+                    days === p.days
+                      ? "bg-rivet/60 text-alu"
+                      : "text-alu-dim hover:bg-rivet/30 hover:text-alu",
+                  )}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </>
         }
       />
+      {recap && <RecapDialog onClose={() => setRecap(false)} />}
 
       {data && (
         <div className="space-y-12 px-10 pb-12">

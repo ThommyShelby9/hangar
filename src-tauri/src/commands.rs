@@ -5,7 +5,7 @@ use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::library::{self, folders, names, GamePatch, LaunchAction, NewManualGame};
 use crate::metadata::{self, sgdb};
-use crate::{controllers, db, gallery, hardware, launcher, paths, perf, saves, scanners, tracker, tray, AppState};
+use crate::{controllers, db, gallery, hardware, launcher, pads, paths, perf, saves, scanners, tracker, tray, AppState};
 
 /// Emitted whenever games, images or statuses change; the UI refetches the library.
 pub const LIBRARY_CHANGED: &str = "library-changed";
@@ -85,14 +85,20 @@ pub fn remove_game(app: AppHandle, id: i64) -> CmdResult<()> {
 }
 
 #[tauri::command]
-pub fn launch_game(app: AppHandle, id: i64, action_id: Option<i64>) -> CmdResult<()> {
+pub async fn launch_game(app: AppHandle, id: i64, action_id: Option<i64>) -> CmdResult<()> {
     let actions = with_db(&app, |c| library::list_actions(c, id))?;
     let action = match action_id {
         Some(aid) => actions.iter().find(|a| a.id == aid),
         None => actions.iter().find(|a| a.is_default).or(actions.first()),
     }
-    .ok_or("Ce jeu n'a aucune action de lancement")?;
-    launcher::launch(action)?;
+    .ok_or("Ce jeu n'a aucune action de lancement")?
+    .clone();
+    // Before the game starts: many games only look at the controller type once, at start-up.
+    let handle = app.clone();
+    tauri::async_runtime::spawn_blocking(move || pads::game_started(&handle.state::<AppState>().db, id))
+        .await
+        .map_err(err)?;
+    launcher::launch(&action)?;
     changed(&app);
     Ok(())
 }
@@ -352,6 +358,11 @@ pub fn stats_overview(app: AppHandle, days: Option<i64>) -> CmdResult<tracker::s
     with_db(&app, |c| tracker::stats::overview(c, since))
 }
 
+#[tauri::command]
+pub fn sessions_between(app: AppHandle, from: i64, to: i64) -> CmdResult<Vec<tracker::stats::SessionRow>> {
+    with_db(&app, |c| tracker::stats::sessions_between(c, from, to))
+}
+
 // ── Hardware ────────────────────────────────────────────────────────────────
 
 fn with_monitor<T>(state: &AppState, f: impl FnOnce(&mut hardware::Monitor) -> T) -> CmdResult<T> {
@@ -608,6 +619,76 @@ pub async fn restore_game_saves(app: AppHandle, id: i64, backup: String) -> CmdR
 #[tauri::command]
 pub fn set_game_save_dir(app: AppHandle, id: i64, dir: Option<String>) -> CmdResult<()> {
     with_db(&app, |c| saves::set_custom_dir(c, id, dir.as_deref()))
+}
+
+// ── Controller profile per game (DS4Windows) ─────────────────────────────────
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GamePadInfo {
+    /// Automatic switching turned on (Manettes page).
+    enabled: bool,
+    ds4windows: bool,
+    profiles: Vec<pads::Profile>,
+    /// `None`: automatic; `Some("")`: leave DS4Windows alone.
+    choice: Option<String>,
+    /// PCGamingWiki: the game supports PlayStation controllers (`None`: unknown).
+    ps_native: Option<bool>,
+    /// The profile the game gets when it starts.
+    picked: Option<String>,
+}
+
+#[tauri::command]
+pub async fn game_pad(app: AppHandle, id: i64) -> CmdResult<GamePadInfo> {
+    let mut game = with_db(&app, |c| pads::game_pad(c, id))?;
+    if game.needs_lookup(db::now()) {
+        // A failed lookup (offline) is tried again on the next visit.
+        let also = with_db(&app, |c| saves::known_name(c, id))?;
+        if let Ok(found) = pads::look_up(&pads::candidate_titles(&game.title, also.as_deref())).await {
+            with_db(&app, |c| pads::store_lookup(c, id, found))?;
+            game.ps_native = found;
+        }
+    }
+    let enabled = with_db(&app, |c| pads::enabled(c))?;
+    let (choice, ps_native) = (game.choice.clone(), game.ps_native);
+    let (ds4windows, profiles, picked) =
+        tauri::async_runtime::spawn_blocking(move || pads::current_choice(choice.as_deref(), ps_native))
+            .await
+            .map_err(err)?;
+    Ok(GamePadInfo { enabled, ds4windows, profiles, choice: game.choice, ps_native: game.ps_native, picked })
+}
+
+#[tauri::command]
+pub fn set_game_pad(app: AppHandle, id: i64, profile: Option<String>) -> CmdResult<()> {
+    with_db(&app, |c| pads::set_choice(c, id, profile.as_deref()))
+}
+
+#[tauri::command]
+pub fn pads_enabled(app: AppHandle) -> CmdResult<bool> {
+    with_db(&app, |c| pads::enabled(c))
+}
+
+#[tauri::command]
+pub fn set_pads_enabled(app: AppHandle, enabled: bool) -> CmdResult<()> {
+    with_db(&app, |c| db::set_setting(c, pads::ENABLED, if enabled { "true" } else { "false" }))
+}
+
+/// Start-up: learns which games support PlayStation controllers, a few seconds apart.
+pub async fn look_up_pad_support(app: AppHandle) {
+    let Ok(games) = with_db(&app, |c| pads::to_look_up(c)) else { return };
+    for (id, title) in games {
+        let also = with_db(&app, |c| saves::known_name(c, id)).ok().flatten();
+        match pads::look_up(&pads::candidate_titles(&title, also.as_deref())).await {
+            Ok(found) => {
+                let _ = with_db(&app, |c| pads::store_lookup(c, id, found));
+            }
+            Err(e) => {
+                eprintln!("Hangar : {e}");
+                return; // offline: next start-up
+            }
+        }
+        let _ = tauri::async_runtime::spawn_blocking(|| std::thread::sleep(std::time::Duration::from_secs(3))).await;
+    }
 }
 
 // ── Watched folders ─────────────────────────────────────────────────────────

@@ -35,7 +35,10 @@ export function GameSaves({ game }: { game: GameDetail }) {
   });
   const chooseDir = useMutation({
     mutationFn: async () => {
-      const dir = await open({ directory: true, title: `Dossier des sauvegardes de ${game.title}` });
+      const dir = await open({
+        directory: true,
+        title: `Dossier des sauvegardes de ${game.title}`,
+      });
       if (dir) await savesApi.setDir(game.id, dir);
     },
     onSuccess: refresh,
@@ -73,7 +76,10 @@ export function GameSaves({ game }: { game: GameDetail }) {
                 ? `${saves.files.length} fichier${saves.files.length > 1 ? "s" : ""} · ${formatBytes(saves.totalBytes)}`
                 : "Aucun fichier de sauvegarde trouvé pour l'instant"}
               {saves.lastBackupAt && (
-                <span className="text-alu-dim"> · dernière sauvegarde le {formatDateTime(saves.lastBackupAt)}</span>
+                <span className="text-alu-dim">
+                  {" "}
+                  · dernière sauvegarde le {formatDateTime(saves.lastBackupAt)}
+                </span>
               )}
             </p>
             <div className="flex gap-2">
@@ -86,7 +92,8 @@ export function GameSaves({ game }: { game: GameDetail }) {
                 <Save size={15} /> {backup.isPending ? "Sauvegarde…" : "Sauvegarder maintenant"}
               </Button>
               <Button size="sm" onClick={() => chooseDir.mutate()}>
-                <FolderSearch size={15} /> {saves.customDir ? "Changer le dossier" : "Ajouter un dossier"}
+                <FolderSearch size={15} />{" "}
+                {saves.customDir ? "Changer le dossier" : "Ajouter un dossier"}
               </Button>
             </div>
           </div>
@@ -124,7 +131,15 @@ function SaveLocations({ saves }: { saves: Saves }) {
   );
 }
 
-function BackupList({ game, saves, onRestored }: { game: GameDetail; saves: Saves; onRestored: () => void }) {
+function BackupList({
+  game,
+  saves,
+  onRestored,
+}: {
+  game: GameDetail;
+  saves: Saves;
+  onRestored: () => void;
+}) {
   const [confirm, setConfirm] = useState<string | null>(null);
   const restore = useMutation({
     mutationFn: (id: string) => savesApi.restore(game.id, id),
@@ -148,10 +163,13 @@ function BackupList({ game, saves, onRestored }: { game: GameDetail; saves: Save
           </span>
           {confirm === b.id ? (
             <span className="flex items-center gap-2">
-              <span className="text-caption text-alu-dim">
-                {game.title} doit être fermé.
-              </span>
-              <Button size="sm" variant="danger" disabled={restore.isPending} onClick={() => restore.mutate(b.id)}>
+              <span className="text-caption text-alu-dim">{game.title} doit être fermé.</span>
+              <Button
+                size="sm"
+                variant="danger"
+                disabled={restore.isPending}
+                onClick={() => restore.mutate(b.id)}
+              >
                 {restore.isPending ? "Restauration…" : "Confirmer"}
               </Button>
               <Button size="sm" variant="ghost" onClick={() => setConfirm(null)}>

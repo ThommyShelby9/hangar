@@ -93,6 +93,17 @@ const MIGRATIONS: &[&str] = &[
         last_backup_at INTEGER,
         last_error     TEXT
     );",
+    // 8 — DS4Windows profile per game
+    "CREATE TABLE game_pads (
+        game_id    INTEGER PRIMARY KEY REFERENCES games (id) ON DELETE CASCADE,
+        profile    TEXT,                              -- NULL: automatic; '': leave DS4Windows alone
+        ps_native  INTEGER,                           -- PCGamingWiki: PlayStation controllers supported (NULL: unknown)
+        checked_at INTEGER                            -- last PCGamingWiki lookup
+    );",
+    // 9 — where the player is with each game
+    "ALTER TABLE games ADD COLUMN progress TEXT;   -- 'todo' | 'playing' | 'done' | 'completed' | 'dropped'
+    ALTER TABLE games ADD COLUMN rating INTEGER;   -- 1 to 5
+    ALTER TABLE games ADD COLUMN notes TEXT;",
 ];
 
 pub fn open(path: &Path) -> rusqlite::Result<Connection> {

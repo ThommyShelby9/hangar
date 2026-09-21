@@ -30,6 +30,10 @@ pub struct Game {
     pub last_played_at: Option<i64>,
     /// Total recorded play time.
     pub playtime_secs: i64,
+    /// 'todo', 'playing', 'done', 'completed' or 'dropped'.
+    pub progress: Option<String>,
+    /// 1 to 5 stars.
+    pub rating: Option<i64>,
     /// Ids of the collections this game belongs to.
     pub collections: Vec<i64>,
     /// kind ('grid', 'hero', 'logo', 'icon') → file relative to the cache folder.
@@ -54,6 +58,7 @@ pub struct GameDetail {
     #[serde(flatten)]
     pub game: Game,
     pub actions: Vec<LaunchAction>,
+    pub notes: Option<String>,
 }
 
 /// A game reported by a platform scanner (Steam, Epic…).
@@ -82,7 +87,7 @@ pub struct NewManualGame {
 const GAME_COLUMNS: &str = "id, title, sort_title, source, install_dir, status, favorite, hidden, \
     sgdb_id, added_at, last_played_at, \
     (SELECT COALESCE(SUM(COALESCE(s.ended_at, s.last_seen_at) - s.started_at), 0) \
-     FROM sessions s WHERE s.game_id = games.id)";
+     FROM sessions s WHERE s.game_id = games.id), progress, rating";
 
 fn game_from_row(row: &rusqlite::Row) -> rusqlite::Result<Game> {
     Ok(Game {
@@ -98,6 +103,8 @@ fn game_from_row(row: &rusqlite::Row) -> rusqlite::Result<Game> {
         added_at: row.get(9)?,
         last_played_at: row.get(10)?,
         playtime_secs: row.get(11)?,
+        progress: row.get(12)?,
+        rating: row.get(13)?,
         collections: Vec::new(),
         images: HashMap::new(),
     })
@@ -142,7 +149,8 @@ pub fn get_game(conn: &Connection, id: i64) -> rusqlite::Result<Option<GameDetai
         .prepare("SELECT collection_id FROM collection_games WHERE game_id = ?1")?
         .query_map([id], |r| r.get(0))?
         .collect::<Result<_, _>>()?;
-    Ok(Some(GameDetail { game, actions: list_actions(conn, id)? }))
+    let notes = conn.query_row("SELECT notes FROM games WHERE id = ?1", [id], |r| r.get(0))?;
+    Ok(Some(GameDetail { game, actions: list_actions(conn, id)?, notes }))
 }
 
 pub fn list_actions(conn: &Connection, game_id: i64) -> rusqlite::Result<Vec<LaunchAction>> {
@@ -275,6 +283,11 @@ pub struct GamePatch {
     pub title: Option<String>,
     pub favorite: Option<bool>,
     pub hidden: Option<bool>,
+    /// "" clears it.
+    pub progress: Option<String>,
+    /// 0 clears it.
+    pub rating: Option<i64>,
+    pub notes: Option<String>,
 }
 
 pub fn update_game(conn: &Connection, id: i64, patch: &GamePatch) -> rusqlite::Result<()> {
@@ -289,6 +302,19 @@ pub fn update_game(conn: &Connection, id: i64, patch: &GamePatch) -> rusqlite::R
     }
     if let Some(hidden) = patch.hidden {
         conn.execute("UPDATE games SET hidden = ?2 WHERE id = ?1", params![id, hidden])?;
+    }
+    if let Some(progress) = &patch.progress {
+        const KNOWN: &[&str] = &["todo", "playing", "done", "completed", "dropped"];
+        let value = KNOWN.contains(&progress.as_str()).then_some(progress);
+        conn.execute("UPDATE games SET progress = ?2 WHERE id = ?1", params![id, value])?;
+    }
+    if let Some(rating) = patch.rating {
+        let value = (1..=5).contains(&rating).then_some(rating);
+        conn.execute("UPDATE games SET rating = ?2 WHERE id = ?1", params![id, value])?;
+    }
+    if let Some(notes) = &patch.notes {
+        let value = Some(notes.trim()).filter(|n| !n.is_empty());
+        conn.execute("UPDATE games SET notes = ?2 WHERE id = ?1", params![id, value])?;
     }
     Ok(())
 }
