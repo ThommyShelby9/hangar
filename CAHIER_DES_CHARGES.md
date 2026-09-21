@@ -334,28 +334,45 @@ Chaque phase contient : **objectif**, **fonctionnalités** (cases à cocher), **
 
 **Objectif** : voir la configuration et l'état du PC en temps réel.
 
-#### 3.1 Configuration fixe
-- [ ] CPU (modèle, cœurs/threads), GPU, RAM (quantité), disques (taille, espace libre), carte mère, version de Windows
+> **État (21/09/2026)** : livrée, avec deux critères à reprendre (voir « Mesures »). PawnIO 2.2.0 installé ; capteur `hangar-sensors.exe` actif via la tâche planifiée « Hangar - capteurs ».
 
-#### 3.2 Temps réel (~1 fois par seconde)
-- [ ] CPU : charge globale et par cœur, fréquence
-- [ ] RAM : utilisée / disponible
-- [ ] GPU NVIDIA MX250 (`nvml-wrapper`) : charge, VRAM, **température**, fréquence (certaines valeurs peuvent manquer sur les GPU mobiles)
-- [ ] GPU Intel Iris Plus : charge via les compteurs de performance Windows
-- [ ] **GPU utilisé par le jeu en cours** (utile sur portable : un jeu lancé sur le GPU Intel par erreur tourne beaucoup moins bien)
-- [ ] **Batterie du PC** : niveau, sur secteur ou non
-- [ ] Disques : lecture/écriture
-- [ ] Réseau : débit montant/descendant
-- [ ] **Températures CPU** via LibreHardwareMonitor + pilote **PawnIO** (à installer au début de la phase)
+#### Architecture des températures CPU
+Le pilote PawnIO n'accepte que les administrateurs (`D:P(A;;GA;;;SY)(A;;GA;;;BA)`). Pour que Hangar et les jeux qu'il lance restent en mode normal :
+- `hangar-sensors.exe` (crate `sensors/`, 230 Ko) lit les registres du CPU via PawnIO + le module signé `IntelMSR.bin` et écrit `data\sensors.json` toutes les 2 s ;
+- il tourne en administrateur grâce à une **tâche planifiée à l'ouverture de session** (créée une fois avec `--install`, un seul UAC ; autorisée sur batterie, sans limite de durée) ; `--uninstall` la supprime ;
+- Hangar lit simplement ce fichier.
+
+#### 3.1 Configuration fixe
+- [x] CPU (modèle, cœurs/threads), GPU (DXGI), RAM, disques (taille, espace libre, SSD/HDD), carte mère, version de Windows
+
+#### 3.2 Temps réel
+- [x] CPU : charge globale et par thread, fréquence
+- [x] **Températures CPU** (package + chaque thread) et **consommation du package en watts** via PawnIO
+- [x] RAM : utilisée / libre
+- [x] GPU NVIDIA MX250 (NVML) : charge, VRAM, température, fréquence — **interrogé seulement quand il est actif**, pour ne pas réveiller la puce Optimus (sinon affiché « en veille »)
+- [x] GPU Intel Iris Plus : charge via les compteurs Windows « GPU Engine »
+- [x] **Processus qui utilise le plus chaque GPU** (montre si un jeu tourne sur le mauvais GPU)
+- [x] **Batterie du PC** : niveau, secteur ou batterie
+- [x] Disques : lecture/écriture ; réseau : débit montant/descendant
+- [x] Zone thermique ACPI (sonde carte mère, sans pilote) en repli quand le capteur est coupé
+- [x] Compteurs Windows ajoutés par leur nom anglais (Windows est en français)
 
 #### 3.3 Affichage
-- [ ] Page Matériel : jauges animées style HUD + courbes des 60 dernières secondes
-- [ ] Mini-widget dans la barre latérale (CPU / GPU / RAM)
-- [ ] Mise à jour en direct **uniquement quand la page est visible** (économie de ressources)
+- [x] Page Matériel : jauges style cockpit + courbes de la dernière minute, cœurs, disques (alerte « presque plein »), activité
+- [x] Mini-moniteur dans la barre latérale (CPU / GPU / RAM, toutes les 3 s)
+- [x] Page Matériel rafraîchie chaque seconde **uniquement quand elle est ouverte**
+- [x] Carte d'activation du capteur (pilote absent / capteur coupé / erreur)
 
 #### 3.4 Lien avec les sessions
 - [ ] Enregistrement pendant les sessions : températures max, charge moyenne
 - [ ] **Résumé de fin de session** : durée, température max, charge moyenne (FPS en phase 7)
+
+#### Mesures (21/09/2026)
+- `hangar-sensors` : 0 % CPU, 4 Mo.
+- Hangar : 0,4 % CPU, 73 Mo ; WebView2 : ~3,7 % CPU et ~520 Mo sur 6 processus.
+- [ ] **< 2 % de CPU page Matériel ouverte : non atteint** → alléger le rendu (animations des jauges, rafraîchissements).
+- [ ] **< 150 Mo de RAM au repos : non atteignable avec WebView2** (plusieurs centaines de Mo à lui seul) → objectif à redéfinir.
+- [ ] Comparaison des valeurs avec le Gestionnaire des tâches (±5 %) : à faire.
 
 **Critères de fin**
 - Les valeurs affichées correspondent à celles du Gestionnaire des tâches (±5 %).
