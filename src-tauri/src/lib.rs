@@ -151,6 +151,8 @@ fn serve_cache_file(cache: &Path, uri_path: &str) -> Response<Vec<u8>> {
             Response::builder()
                 .header(CONTENT_TYPE, mime)
                 .header("Cache-Control", "max-age=31536000, immutable")
+                // Lets the UI read cover pixels (dominant colour) from a canvas.
+                .header("Access-Control-Allow-Origin", "*")
                 .body(bytes)
                 .unwrap()
         }

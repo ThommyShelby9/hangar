@@ -2,6 +2,7 @@ import { Outlet } from "react-router";
 import { Titlebar } from "@/components/Titlebar";
 import { Sidebar } from "@/components/Sidebar";
 import { Toaster } from "@/components/Toaster";
+import { CommandPalette } from "@/components/CommandPalette";
 import { useLibraryEvents } from "@/features/library/queries";
 
 export function Shell() {
@@ -16,6 +17,7 @@ export function Shell() {
         </main>
       </div>
       <Toaster />
+      <CommandPalette />
     </div>
   );
 }

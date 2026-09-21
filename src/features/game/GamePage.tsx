@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import { Link, useParams } from "react-router";
 import { useMutation } from "@tanstack/react-query";
 import { ArrowLeft, Heart, Pencil, Play, TriangleAlert } from "lucide-react";
@@ -7,6 +7,9 @@ import { Button } from "@/components/Button";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { useGame, useGameStats, useRunningGames } from "@/features/library/queries";
+import { GameCover } from "@/features/library/GameCover";
+import { useDominantColor } from "@/lib/color";
+import { motion } from "motion/react";
 import { formatDateTime, formatDuration, formatShortDate } from "@/lib/format";
 import { EditGameDialog } from "@/features/game/EditGameDialog";
 import { ArtworkDialog } from "@/features/game/ArtworkDialog";
@@ -42,6 +45,7 @@ function GameView({ game }: { game: GameDetail }) {
   const running = useRunningGames().has(game.id);
   const { data: stats } = useGameStats(game.id);
   const [primary, ...others] = game.actions;
+  const accent = useDominantColor(cover);
 
   const launch = useMutation({
     mutationFn: (actionId?: number) => api.launchGame(game.id, actionId),
@@ -54,7 +58,10 @@ function GameView({ game }: { game: GameDetail }) {
   });
 
   return (
-    <article className="min-h-full">
+    <article
+      className="min-h-full"
+      style={accent ? ({ "--accent": accent } as CSSProperties) : undefined}
+    >
       <section className="relative isolate flex h-[52vh] min-h-[26rem] flex-col justify-between overflow-hidden px-10 pt-6 pb-8">
         {hero ? (
           <img src={hero} alt="" className="absolute inset-0 -z-10 size-full object-cover" />
@@ -68,6 +75,16 @@ function GameView({ game }: { game: GameDetail }) {
         {/* Fades the artwork into the page and keeps the title legible. */}
         <div className="absolute inset-0 -z-10 bg-gradient-to-t from-tarmac via-tarmac/55 to-tarmac/10" />
         <div className="absolute inset-0 -z-10 bg-gradient-to-r from-tarmac/70 to-transparent" />
+        {/* The cover's own colour glows under the title. */}
+        <div
+          aria-hidden
+          className="absolute inset-0 -z-10 transition-opacity duration-700"
+          style={{
+            opacity: accent ? 1 : 0,
+            background:
+              "radial-gradient(55% 75% at 18% 92%, rgb(var(--accent) / 0.42), transparent 72%)",
+          }}
+        />
 
         <BackLink />
 
@@ -145,7 +162,14 @@ function GameView({ game }: { game: GameDetail }) {
         </p>
       )}
 
-      <section className="flex flex-wrap gap-x-14 gap-y-4 px-10 pt-8">
+      <section className="flex flex-wrap items-end gap-x-14 gap-y-4 px-10 pt-8">
+        <motion.div
+          layoutId={`cover-${game.id}`}
+          transition={{ type: "spring", stiffness: 260, damping: 30 }}
+          className="relative z-10 -mt-32 w-36 shrink-0 shadow-2xl shadow-black/50"
+        >
+          <GameCover game={game} />
+        </motion.div>
         <Figure label="Temps de jeu" value={stats ? formatDuration(stats.totalSecs) : "…"} />
         <Figure label="Sessions" value={stats ? String(stats.sessionCount) : "…"} />
         <Figure
