@@ -505,7 +505,8 @@ Pour la DS3, DsHidMini (installé en phase 4) propose déjà son propre mode XIn
 #### Confort
 - [ ] **Mode performance au lancement** : mode d'alimentation (`powercfg`), fermeture d'applis gourmandes, Ne pas déranger — restauré à la fermeture du jeu
 - [ ] **Discord Rich Presence**
-- [ ] Icône dans la zone de notification, raccourci global, démarrage avec Windows (entrée de registre uniquement)
+- [x] Icône près de l'horloge (Ouvrir, Mode TV, Quitter) ; la croix cache Hangar au lieu de le quitter (réglable) ; démarrage avec Windows, caché (entrée de registre uniquement) ; une seule instance par dossier de données
+- [ ] Raccourci clavier global
 - [ ] Affichage de l'espace disque par jeu
 
 #### Données
