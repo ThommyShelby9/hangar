@@ -52,14 +52,16 @@ export function BigPicturePage() {
   const col = Math.min(pos.col, Math.max(0, (rows[row]?.games.length ?? 1) - 1));
   const selected = rows[row]?.games[col];
 
+  // Full screen lasts as long as this screen: leaving it, by any route, restores the window.
   useEffect(() => {
-    getCurrentWindow().setFullscreen(true);
+    const appWindow = getCurrentWindow();
+    appWindow.setFullscreen(true);
+    return () => {
+      appWindow.setFullscreen(false);
+    };
   }, []);
 
-  const exit = useCallback(async () => {
-    await getCurrentWindow().setFullscreen(false);
-    navigate("/bibliotheque");
-  }, [navigate]);
+  const exit = useCallback(() => navigate("/bibliotheque"), [navigate]);
 
   const onAction = (action: NavAction) => {
     if (action === "back") return void exit();
