@@ -8,6 +8,7 @@ import { HardwarePage } from "@/features/hardware/HardwarePage";
 import { ControllersPage } from "@/features/controllers/ControllersPage";
 import { SettingsPage } from "@/features/settings/SettingsPage";
 import { GamePage } from "@/features/game/GamePage";
+import { BigPicturePage } from "@/features/bigpicture/BigPicturePage";
 
 const queryClient = new QueryClient();
 
@@ -17,6 +18,7 @@ export default function App() {
       <MotionConfig reducedMotion="user">
         <HashRouter>
           <Routes>
+            <Route path="tv" element={<BigPicturePage />} />
             <Route element={<Shell />}>
               <Route index element={<Navigate to="/bibliotheque" replace />} />
               <Route path="bibliotheque" element={<LibraryPage />} />

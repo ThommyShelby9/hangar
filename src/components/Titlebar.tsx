@@ -1,11 +1,13 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { Copy, Minus, Square, X } from "lucide-react";
+import { Copy, Minus, Square, Tv, X } from "lucide-react";
+import { useNavigate } from "react-router";
 import { cn } from "@/lib/utils";
 
 const appWindow = getCurrentWindow();
 
 export function Titlebar() {
+  const navigate = useNavigate();
   const [maximized, setMaximized] = useState(false);
 
   useEffect(() => {
@@ -26,7 +28,16 @@ export function Titlebar() {
         HANGAR
       </span>
 
-      <div className="flex h-full">
+      <div className="flex h-full items-center">
+        <button
+          type="button"
+          onClick={() => navigate("/tv")}
+          title="Plein écran, à piloter à la manette"
+          className="mr-3 flex h-7 items-center gap-2 rounded-control px-2.5 text-caption text-alu-dim transition-colors hover:bg-rivet/60 hover:text-alu"
+        >
+          <Tv size={14} />
+          Mode TV
+        </button>
         <WindowButton label="Réduire" onClick={() => appWindow.minimize()}>
           <Minus size={16} strokeWidth={1.5} />
         </WindowButton>
@@ -66,7 +77,7 @@ function WindowButton({
       title={label}
       onClick={onClick}
       className={cn(
-        "grid w-12 place-items-center text-alu-dim transition-colors hover:text-alu focus-visible:-outline-offset-2",
+        "grid w-12 place-items-center self-stretch text-alu-dim transition-colors hover:text-alu focus-visible:-outline-offset-2",
         danger ? "hover:bg-flare hover:text-white" : "hover:bg-rivet/60",
       )}
     >
