@@ -6,7 +6,8 @@ import { api, imageUrl, type GameDetail } from "@/lib/api";
 import { Button } from "@/components/Button";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
-import { useGame } from "@/features/library/queries";
+import { useGame, useGameStats, useRunningGames } from "@/features/library/queries";
+import { formatDateTime, formatDuration, formatShortDate } from "@/lib/format";
 import { EditGameDialog } from "@/features/game/EditGameDialog";
 import { ArtworkDialog } from "@/features/game/ArtworkDialog";
 
@@ -38,6 +39,8 @@ function GameView({ game }: { game: GameDetail }) {
   const cover = imageUrl(game.images.grid);
   const logo = imageUrl(game.images.logo);
   const missing = game.status === "missing";
+  const running = useRunningGames().has(game.id);
+  const { data: stats } = useGameStats(game.id);
   const [primary, ...others] = game.actions;
 
   const launch = useMutation({
@@ -85,12 +88,21 @@ function GameView({ game }: { game: GameDetail }) {
             <Button
               variant="primary"
               size="lg"
-              disabled={!primary || missing || launch.isPending}
+              disabled={!primary || missing || running || launch.isPending}
               onClick={() => launch.mutate(primary?.id)}
               className="min-w-44"
             >
-              <Play size={20} className="fill-current" />
-              Jouer
+              {running ? (
+                <>
+                  <span className="size-2.5 animate-pulse rounded-full bg-current" />
+                  En cours
+                </>
+              ) : (
+                <>
+                  <Play size={20} className="fill-current" />
+                  Jouer
+                </>
+              )}
             </Button>
             {others.map((action) => (
               <Button
@@ -133,6 +145,16 @@ function GameView({ game }: { game: GameDetail }) {
         </p>
       )}
 
+      <section className="flex flex-wrap gap-x-14 gap-y-4 px-10 pt-8">
+        <Figure label="Temps de jeu" value={stats ? formatDuration(stats.totalSecs) : "…"} />
+        <Figure label="Sessions" value={stats ? String(stats.sessionCount) : "…"} />
+        <Figure
+          label="Dernière session"
+          value={stats?.lastSession ? formatDuration(stats.lastSession.durationSecs) : "—"}
+          detail={stats?.lastSession && formatShortDate(stats.lastSession.startedAt)}
+        />
+      </section>
+
       <dl className="grid max-w-3xl grid-cols-[10rem_1fr] gap-x-6 gap-y-3 px-10 py-8">
         <dt className="text-alu-dim">Provenance</dt>
         <dd>{SOURCE_LABEL[game.source]}</dd>
@@ -143,9 +165,9 @@ function GameView({ game }: { game: GameDetail }) {
           </>
         )}
         <dt className="text-alu-dim">Dernière partie</dt>
-        <dd>{game.lastPlayedAt ? formatDate(game.lastPlayedAt) : "Jamais lancé depuis Hangar"}</dd>
+        <dd>{game.lastPlayedAt ? formatDateTime(game.lastPlayedAt) : "Jamais lancé"}</dd>
         <dt className="text-alu-dim">Ajouté le</dt>
-        <dd>{formatDate(game.addedAt)}</dd>
+        <dd>{formatDateTime(game.addedAt)}</dd>
       </dl>
 
       {dialog === "edit" && (
@@ -172,8 +194,20 @@ function BackLink() {
   );
 }
 
-const dateFormat = new Intl.DateTimeFormat("fr-FR", { dateStyle: "long", timeStyle: "short" });
-
-function formatDate(seconds: number) {
-  return dateFormat.format(new Date(seconds * 1000));
+function Figure({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: string;
+  detail?: string | null;
+}) {
+  return (
+    <div>
+      <p className="text-alu-dim">{label}</p>
+      <p className="mt-1 text-[1.75rem] leading-none font-semibold">{value}</p>
+      {detail && <p className="mt-1.5 text-caption text-alu-dim">{detail}</p>}
+    </div>
+  );
 }

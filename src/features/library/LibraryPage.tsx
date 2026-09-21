@@ -5,22 +5,39 @@ import Fuse from "fuse.js";
 import { open } from "@tauri-apps/plugin-dialog";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { FolderSearch, Plus, Search } from "lucide-react";
-import { api, type FolderCandidate } from "@/lib/api";
+import { api, type FolderCandidate, type Game } from "@/lib/api";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/Button";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
-import { useGames } from "@/features/library/queries";
+import { useGames, useRunningGames } from "@/features/library/queries";
 import { GameCard } from "@/features/library/GameCard";
 import { ImportDialog } from "@/features/library/ImportDialog";
 
 type Filter = "all" | "favorites";
 
+const SORTS = {
+  title: { label: "Nom", compare: (a: Game, b: Game) => a.sortTitle.localeCompare(b.sortTitle) },
+  recent: {
+    label: "Dernière partie",
+    compare: (a: Game, b: Game) => (b.lastPlayedAt ?? 0) - (a.lastPlayedAt ?? 0),
+  },
+  playtime: {
+    label: "Temps de jeu",
+    compare: (a: Game, b: Game) => b.playtimeSecs - a.playtimeSecs,
+  },
+  added: { label: "Date d'ajout", compare: (a: Game, b: Game) => b.addedAt - a.addedAt },
+} as const;
+
+type Sort = keyof typeof SORTS;
+
 export function LibraryPage() {
   const { data: games = [], isPending } = useGames();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
+  const [sort, setSort] = useState<Sort>("title");
+  const running = useRunningGames();
   const [candidates, setCandidates] = useState<FolderCandidate[] | null>(null);
   const dragging = useDroppedGames(setCandidates);
 
@@ -48,11 +65,11 @@ export function LibraryPage() {
 
   const visible = useMemo(() => {
     const shown = games.filter((g) => !g.hidden && (filter === "all" || g.favorite));
-    if (!query.trim()) return shown;
+    if (!query.trim()) return [...shown].sort(SORTS[sort].compare);
     return new Fuse(shown, { keys: ["title"], threshold: 0.35, ignoreLocation: true })
       .search(query.trim())
       .map((r) => r.item);
-  }, [games, query, filter]);
+  }, [games, query, filter, sort]);
 
   const actions = (
     <>
@@ -119,6 +136,20 @@ export function LibraryPage() {
                 </button>
               ))}
             </div>
+            <label className="flex items-center gap-2 text-alu-dim">
+              Trier par
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value as Sort)}
+                className="h-9 rounded-control border border-rivet bg-bay px-2 text-alu focus:border-signal focus:outline-none"
+              >
+                {Object.entries(SORTS).map(([value, { label }]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
             <p className="ml-auto text-alu-dim tabular-nums">
               {visible.length} {visible.length > 1 ? "jeux" : "jeu"}
             </p>
@@ -132,7 +163,7 @@ export function LibraryPage() {
             <ul className="grid grid-cols-[repeat(auto-fill,minmax(10.5rem,1fr))] gap-x-5 gap-y-7 px-10 pb-12">
               {visible.map((game) => (
                 <li key={game.id}>
-                  <GameCard game={game} />
+                  <GameCard game={game} running={running.has(game.id)} />
                 </li>
               ))}
             </ul>

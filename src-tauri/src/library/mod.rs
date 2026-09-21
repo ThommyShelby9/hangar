@@ -26,6 +26,8 @@ pub struct Game {
     pub sgdb_id: Option<i64>,
     pub added_at: i64,
     pub last_played_at: Option<i64>,
+    /// Total recorded play time.
+    pub playtime_secs: i64,
     /// kind ('grid', 'hero', 'logo', 'icon') → file relative to the cache folder.
     pub images: HashMap<String, String>,
 }
@@ -71,7 +73,9 @@ pub struct NewManualGame {
 }
 
 const GAME_COLUMNS: &str = "id, title, sort_title, source, install_dir, status, favorite, hidden, \
-                            sgdb_id, added_at, last_played_at";
+    sgdb_id, added_at, last_played_at, \
+    (SELECT COALESCE(SUM(COALESCE(s.ended_at, s.last_seen_at) - s.started_at), 0) \
+     FROM sessions s WHERE s.game_id = games.id)";
 
 fn game_from_row(row: &rusqlite::Row) -> rusqlite::Result<Game> {
     Ok(Game {
@@ -86,6 +90,7 @@ fn game_from_row(row: &rusqlite::Row) -> rusqlite::Result<Game> {
         sgdb_id: row.get(8)?,
         added_at: row.get(9)?,
         last_played_at: row.get(10)?,
+        playtime_secs: row.get(11)?,
         images: HashMap::new(),
     })
 }

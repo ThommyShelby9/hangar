@@ -21,6 +21,7 @@ export interface Game {
   sgdbId: number | null;
   addedAt: number;
   lastPlayedAt: number | null;
+  playtimeSecs: number;
   /** Files relative to the cache folder, see `imageUrl`. */
   images: Partial<Record<ArtKind, string>>;
 }
@@ -123,3 +124,41 @@ export const api = {
 export function imageUrl(file: string | undefined): string | undefined {
   return file ? `http://hangar.localhost/${file}` : undefined;
 }
+
+export interface GameStats {
+  totalSecs: number;
+  sessionCount: number;
+  lastSession: { startedAt: number; durationSecs: number } | null;
+}
+
+export interface StatsOverview {
+  totalSecs: number;
+  sessionCount: number;
+  gamesPlayed: number;
+  /** Local dates "YYYY-MM-DD" with play time; days without play are absent. */
+  daily: { day: string; secs: number }[];
+  topGames: {
+    gameId: number;
+    title: string;
+    secs: number;
+    sessions: number;
+    grid: string | null;
+  }[];
+  recent: {
+    id: number;
+    gameId: number;
+    title: string;
+    startedAt: number;
+    durationSecs: number;
+    running: boolean;
+  }[];
+}
+
+/** Emitted by the tracker when a game starts or stops. */
+export const SESSIONS_CHANGED = "sessions-changed";
+
+export const statsApi = {
+  runningGames: () => invoke<number[]>("running_games"),
+  gameStats: (id: number) => invoke<GameStats>("game_stats", { id }),
+  overview: (days: number | null) => invoke<StatsOverview>("stats_overview", { days }),
+};

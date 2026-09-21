@@ -24,6 +24,7 @@ regex = "1"
 reqwest = { version = "0.13", features = ["json"] }
 urlencoding = "2"
 tauri-plugin-dialog = "2"
+sysinfo = { version = "0.39", default-features = false, features = ["system"] }
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.56"

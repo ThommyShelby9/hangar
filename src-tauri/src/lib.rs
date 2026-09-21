@@ -5,8 +5,10 @@ mod library;
 mod metadata;
 mod paths;
 mod scanners;
+mod tracker;
 
 use std::path::{Component, Path};
+use std::collections::HashSet;
 use std::sync::atomic::AtomicBool;
 use std::sync::Mutex;
 
@@ -22,6 +24,8 @@ pub struct AppState {
     pub db: Mutex<Connection>,
     /// True while the background artwork download runs.
     pub artwork_running: AtomicBool,
+    /// Games currently running, maintained by the tracker.
+    pub running: Mutex<HashSet<i64>>,
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -61,6 +65,8 @@ pub fn run() {
                 .data_directory(webview_dir)
                 .build()?;
 
+            tracker::spawn(app.handle().clone());
+
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 if let Err(e) = commands::scan_platforms(handle).await {
@@ -91,6 +97,9 @@ pub fn run() {
             commands::sgdb_images,
             commands::set_game_sgdb,
             commands::set_game_image,
+            commands::running_games,
+            commands::game_stats,
+            commands::stats_overview,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -102,7 +111,12 @@ fn init_state() -> Result<AppState, String> {
     let conn = db::open(&paths.database)
         .map_err(|e| format!("impossible d'ouvrir la base {} : {e}", paths.database.display()))?;
     library::seed_watched_folders(&conn).map_err(|e| e.to_string())?;
-    Ok(AppState { paths, db: Mutex::new(conn), artwork_running: AtomicBool::new(false) })
+    Ok(AppState {
+        paths,
+        db: Mutex::new(conn),
+        artwork_running: AtomicBool::new(false),
+        running: Mutex::new(HashSet::new()),
+    })
 }
 
 fn serve_cache_file(cache: &Path, uri_path: &str) -> Response<Vec<u8>> {

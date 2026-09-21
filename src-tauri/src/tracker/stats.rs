@@ -1,0 +1,170 @@
+//! Play-time statistics computed from `sessions`.
+
+use rusqlite::{params, Connection, OptionalExtension};
+use serde::Serialize;
+
+/// Length of a session, open ones counted up to their last heartbeat.
+const DURATION: &str = "(COALESCE(ended_at, last_seen_at) - started_at)";
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GameStats {
+    pub total_secs: i64,
+    pub session_count: i64,
+    pub last_session: Option<SessionSummary>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionSummary {
+    pub started_at: i64,
+    pub duration_secs: i64,
+}
+
+pub fn game_stats(conn: &Connection, game_id: i64) -> rusqlite::Result<GameStats> {
+    let (total_secs, session_count) = conn.query_row(
+        &format!("SELECT COALESCE(SUM({DURATION}), 0), COUNT(*) FROM sessions WHERE game_id = ?1"),
+        [game_id],
+        |r| Ok((r.get(0)?, r.get(1)?)),
+    )?;
+    let last_session = conn
+        .query_row(
+            &format!(
+                "SELECT started_at, {DURATION} FROM sessions WHERE game_id = ?1 ORDER BY started_at DESC LIMIT 1"
+            ),
+            [game_id],
+            |r| Ok(SessionSummary { started_at: r.get(0)?, duration_secs: r.get(1)? }),
+        )
+        .optional()?;
+    Ok(GameStats { total_secs, session_count, last_session })
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DayTotal {
+    /// Local date, "YYYY-MM-DD".
+    pub day: String,
+    pub secs: i64,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GameTotal {
+    pub game_id: i64,
+    pub title: String,
+    pub secs: i64,
+    pub sessions: i64,
+    pub grid: Option<String>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RecentSession {
+    pub id: i64,
+    pub game_id: i64,
+    pub title: String,
+    pub started_at: i64,
+    pub duration_secs: i64,
+    pub running: bool,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Overview {
+    pub total_secs: i64,
+    pub session_count: i64,
+    pub games_played: i64,
+    pub daily: Vec<DayTotal>,
+    pub top_games: Vec<GameTotal>,
+    pub recent: Vec<RecentSession>,
+}
+
+/// Totals for sessions started since `since` (Unix seconds; 0 for all time).
+pub fn overview(conn: &Connection, since: i64) -> rusqlite::Result<Overview> {
+    let (total_secs, session_count, games_played) = conn.query_row(
+        &format!(
+            "SELECT COALESCE(SUM({DURATION}), 0), COUNT(*), COUNT(DISTINCT game_id)
+             FROM sessions WHERE started_at >= ?1"
+        ),
+        [since],
+        |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+    )?;
+
+    let daily = conn
+        .prepare(&format!(
+            "SELECT date(started_at, 'unixepoch', 'localtime') AS day, SUM({DURATION})
+             FROM sessions WHERE started_at >= ?1 GROUP BY day ORDER BY day"
+        ))?
+        .query_map([since], |r| Ok(DayTotal { day: r.get(0)?, secs: r.get(1)? }))?
+        .collect::<Result<_, _>>()?;
+
+    let top_games = conn
+        .prepare(&format!(
+            "SELECT g.id, g.title, SUM({DURATION}) AS total, COUNT(*),
+                    (SELECT file FROM game_images i WHERE i.game_id = g.id AND i.kind = 'grid')
+             FROM sessions s JOIN games g ON g.id = s.game_id
+             WHERE s.started_at >= ?1
+             GROUP BY g.id ORDER BY total DESC LIMIT 8"
+        ))?
+        .query_map([since], |r| {
+            Ok(GameTotal {
+                game_id: r.get(0)?,
+                title: r.get(1)?,
+                secs: r.get(2)?,
+                sessions: r.get(3)?,
+                grid: r.get(4)?,
+            })
+        })?
+        .collect::<Result<_, _>>()?;
+
+    let recent = conn
+        .prepare(&format!(
+            "SELECT s.id, g.id, g.title, s.started_at, {DURATION}, s.ended_at IS NULL
+             FROM sessions s JOIN games g ON g.id = s.game_id
+             WHERE s.started_at >= ?1
+             ORDER BY s.started_at DESC LIMIT 20"
+        ))?
+        .query_map(params![since], |r| {
+            Ok(RecentSession {
+                id: r.get(0)?,
+                game_id: r.get(1)?,
+                title: r.get(2)?,
+                started_at: r.get(3)?,
+                duration_secs: r.get(4)?,
+                running: r.get(5)?,
+            })
+        })?
+        .collect::<Result<_, _>>()?;
+
+    Ok(Overview { total_secs, session_count, games_played, daily, top_games, recent })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::db;
+
+    #[test]
+    fn totals_per_game_and_period() {
+        let conn = db::open_in_memory().unwrap();
+        conn.execute_batch(
+            "INSERT INTO games (id, title, sort_title, source, source_id, added_at) VALUES
+                (1, 'A', 'a', 'manual', 'a', 0), (2, 'B', 'b', 'manual', 'b', 0);
+             INSERT INTO sessions (game_id, started_at, last_seen_at, ended_at) VALUES
+                (1, 1000, 4600, 4600), (1, 90000, 91800, 91800), (2, 95000, 95600, 95600);",
+        )
+        .unwrap();
+
+        let a = game_stats(&conn, 1).unwrap();
+        assert_eq!((a.total_secs, a.session_count), (3600 + 1800, 2));
+        assert_eq!(a.last_session.unwrap().started_at, 90000);
+
+        let all = overview(&conn, 0).unwrap();
+        assert_eq!((all.total_secs, all.session_count, all.games_played), (6000, 3, 2));
+        assert_eq!(all.top_games[0].title, "A");
+
+        let recent = overview(&conn, 80000).unwrap();
+        assert_eq!(recent.total_secs, 2400);
+        assert_eq!(recent.recent[0].title, "B");
+    }
+}

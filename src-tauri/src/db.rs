@@ -51,6 +51,22 @@ const MIGRATIONS: &[&str] = &[
     CREATE TABLE ignored_paths (
         path TEXT PRIMARY KEY                         -- lowercase folder or exe the user declined
     );",
+    // 3 — play time
+    "CREATE TABLE sessions (
+        id           INTEGER PRIMARY KEY,
+        game_id      INTEGER NOT NULL REFERENCES games (id) ON DELETE CASCADE,
+        started_at   INTEGER NOT NULL,
+        last_seen_at INTEGER NOT NULL,                -- heartbeat: closes the session after a crash
+        ended_at     INTEGER
+    );
+    CREATE INDEX sessions_by_game ON sessions (game_id);
+    CREATE INDEX sessions_by_start ON sessions (started_at);
+    CREATE TABLE tracked_processes (
+        game_id  INTEGER NOT NULL REFERENCES games (id) ON DELETE CASCADE,
+        exe_name TEXT    NOT NULL,                    -- lowercase file name, e.g. 'rdr2.exe'
+        learned  INTEGER NOT NULL DEFAULT 1,          -- 1: picked by Hangar, 0: chosen by the user
+        PRIMARY KEY (game_id, exe_name)
+    );",
 ];
 
 pub fn open(path: &Path) -> rusqlite::Result<Connection> {

@@ -5,7 +5,7 @@ use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::library::{self, folders, names, GamePatch, LaunchAction, NewManualGame};
 use crate::metadata::{self, sgdb};
-use crate::{db, launcher, paths, scanners, AppState};
+use crate::{db, launcher, paths, scanners, tracker, AppState};
 
 /// Emitted whenever games, images or statuses change; the UI refetches the library.
 pub const LIBRARY_CHANGED: &str = "library-changed";
@@ -190,6 +190,25 @@ pub fn import_games(app: AppHandle, games: Vec<NewManualGame>) -> CmdResult<Vec<
 #[tauri::command]
 pub fn ignore_folders(app: AppHandle, dirs: Vec<String>) -> CmdResult<()> {
     with_db(&app, |c| dirs.iter().try_for_each(|d| library::ignore_path(c, d)))
+}
+
+// ── Play time ───────────────────────────────────────────────────────────────
+
+#[tauri::command]
+pub fn running_games(state: State<'_, AppState>) -> CmdResult<Vec<i64>> {
+    Ok(state.running.lock().map_err(err)?.iter().copied().collect())
+}
+
+#[tauri::command]
+pub fn game_stats(app: AppHandle, id: i64) -> CmdResult<tracker::stats::GameStats> {
+    with_db(&app, |c| tracker::stats::game_stats(c, id))
+}
+
+/// Play-time overview for the last `days` days, or all time.
+#[tauri::command]
+pub fn stats_overview(app: AppHandle, days: Option<i64>) -> CmdResult<tracker::stats::Overview> {
+    let since = days.map_or(0, |d| db::now() - d * 86_400);
+    with_db(&app, |c| tracker::stats::overview(c, since))
 }
 
 // ── Watched folders ─────────────────────────────────────────────────────────
