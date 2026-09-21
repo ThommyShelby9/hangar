@@ -66,6 +66,42 @@ pub struct RecentSession {
     pub started_at: i64,
     pub duration_secs: i64,
     pub running: bool,
+    pub max_cpu_temp: Option<f64>,
+    pub max_gpu_temp: Option<f64>,
+}
+
+/// Sent when a game closes: what the session looked like.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionEnd {
+    pub game_id: i64,
+    pub title: String,
+    pub duration_secs: i64,
+    pub max_cpu_temp: Option<f64>,
+    pub max_gpu_temp: Option<f64>,
+    pub avg_cpu_load: Option<f64>,
+}
+
+/// The game's session that ended after `since`, if it was kept (long enough).
+pub fn last_session_summary(conn: &Connection, game_id: i64, since: i64) -> rusqlite::Result<Option<SessionEnd>> {
+    conn.query_row(
+        "SELECT g.id, g.title, s.ended_at - s.started_at, s.max_cpu_temp, s.max_gpu_temp, s.avg_cpu_load
+         FROM sessions s JOIN games g ON g.id = s.game_id
+         WHERE s.game_id = ?1 AND s.ended_at >= ?2
+         ORDER BY s.ended_at DESC LIMIT 1",
+        params![game_id, since],
+        |r| {
+            Ok(SessionEnd {
+                game_id: r.get(0)?,
+                title: r.get(1)?,
+                duration_secs: r.get(2)?,
+                max_cpu_temp: r.get(3)?,
+                max_gpu_temp: r.get(4)?,
+                avg_cpu_load: r.get(5)?,
+            })
+        },
+    )
+    .optional()
 }
 
 #[derive(Serialize)]
@@ -119,7 +155,7 @@ pub fn overview(conn: &Connection, since: i64) -> rusqlite::Result<Overview> {
 
     let recent = conn
         .prepare(&format!(
-            "SELECT s.id, g.id, g.title, s.started_at, {DURATION}, s.ended_at IS NULL
+            "SELECT s.id, g.id, g.title, s.started_at, {DURATION}, s.ended_at IS NULL, s.max_cpu_temp, s.max_gpu_temp
              FROM sessions s JOIN games g ON g.id = s.game_id
              WHERE s.started_at >= ?1
              ORDER BY s.started_at DESC LIMIT 20"
@@ -132,6 +168,8 @@ pub fn overview(conn: &Connection, since: i64) -> rusqlite::Result<Overview> {
                 started_at: r.get(3)?,
                 duration_secs: r.get(4)?,
                 running: r.get(5)?,
+                max_cpu_temp: r.get(6)?,
+                max_gpu_temp: r.get(7)?,
             })
         })?
         .collect::<Result<_, _>>()?;
@@ -143,6 +181,20 @@ pub fn overview(conn: &Connection, since: i64) -> rusqlite::Result<Overview> {
 mod tests {
     use super::*;
     use crate::db;
+
+    #[test]
+    fn summary_of_a_finished_session() {
+        let conn = db::open_in_memory().unwrap();
+        conn.execute_batch(
+            "INSERT INTO games (id, title, sort_title, source, source_id, added_at) VALUES (1, 'A', 'a', 'manual', 'a', 0);
+             INSERT INTO sessions (game_id, started_at, last_seen_at, ended_at, max_cpu_temp, avg_cpu_load, load_samples)
+                VALUES (1, 1000, 4600, 4600, 88.0, 42.5, 720);",
+        )
+        .unwrap();
+        let end = last_session_summary(&conn, 1, 4500).unwrap().unwrap();
+        assert_eq!((end.duration_secs, end.max_cpu_temp, end.max_gpu_temp), (3600, Some(88.0), None));
+        assert!(last_session_summary(&conn, 1, 5000).unwrap().is_none(), "trop ancienne");
+    }
 
     #[test]
     fn totals_per_game_and_period() {

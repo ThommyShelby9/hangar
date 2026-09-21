@@ -96,6 +96,12 @@ pub struct GpuReading {
     pub asleep: bool,
 }
 
+pub struct SessionSample {
+    pub cpu_load: f64,
+    pub cpu_temp: Option<f64>,
+    pub gpu_temp: Option<f64>,
+}
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Battery {
@@ -217,6 +223,16 @@ impl Monitor {
             net_tx_bps: tx as f64 / elapsed,
             battery: battery(),
             system_temp_c,
+        }
+    }
+
+    /// Readings kept with a play session: CPU load, hottest CPU and GPU temperatures.
+    pub fn session_sample(&mut self) -> SessionSample {
+        let snap = self.snapshot();
+        SessionSample {
+            cpu_load: snap.cpu.usage as f64,
+            cpu_temp: snap.cpu.package_c.map(f64::from).or(snap.system_temp_c),
+            gpu_temp: snap.gpus.iter().filter_map(|g| g.nvidia.temperature_c).max().map(f64::from),
         }
     }
 

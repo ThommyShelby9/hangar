@@ -12,12 +12,14 @@ use rusqlite::{params, Connection};
 use sysinfo::{ProcessRefreshKind, ProcessesToUpdate, System, UpdateKind};
 use tauri::{AppHandle, Emitter, Manager};
 
-use crate::{commands, db, AppState};
+use crate::{commands, db, hardware, AppState};
 use matcher::{game_for, install_dir_key, RunningProcess, WatchedGame};
 use sessions::{Event, Sessions, MIN_SESSION_SECS};
 
 /// Emitted when a game starts or stops; the UI refreshes "running" badges and stats.
 pub const SESSIONS_CHANGED: &str = "sessions-changed";
+/// Emitted with a `stats::SessionEnd` when a game closes after a session worth keeping.
+pub const SESSION_ENDED: &str = "session-ended";
 const TICK_SECS: i64 = 5;
 /// An open session whose heartbeat is older than this was interrupted (crash, shutdown).
 const RESUME_WINDOW_SECS: i64 = 120;
@@ -78,6 +80,7 @@ fn run(app: AppHandle) {
         let events = sessions.tick(&seen, TICK_SECS);
         let now = db::now();
         let mut changed = false;
+        let mut ended = Vec::new();
         with_db(&app, |c| {
             for event in &events {
                 match event {
@@ -91,12 +94,28 @@ fn run(app: AppHandle) {
                         if let Some(exe) = main_exe.as_deref().filter(|_| *main_exe_secs >= MIN_SESSION_SECS) {
                             learn(c, *game_id, exe)?;
                         }
+                        // Too-short sessions were dropped by close_session: nothing to sum up.
+                        ended.extend(stats::last_session_summary(c, *game_id, now - TICK_SECS * 3)?);
                         changed = true;
                     }
                 }
             }
             Ok(())
         });
+
+        // Hardware readings while something runs: kept with the session for its summary.
+        if !sessions.running().is_empty() {
+            let state = app.state::<AppState>();
+            let sample = state.monitor.lock().ok().map(|mut monitor| {
+                monitor.get_or_insert_with(|| hardware::Monitor::new(&state.paths.data)).session_sample()
+            });
+            if let Some(sample) = sample {
+                with_db(&app, |c| record_sample(c, &sample));
+            }
+        }
+        for summary in ended {
+            let _ = app.emit(SESSION_ENDED, summary);
+        }
 
         if changed {
             if let Ok(mut running) = app.state::<AppState>().running.lock() {
@@ -147,6 +166,20 @@ fn open_session(conn: &Connection, game_id: i64, now: i64) -> rusqlite::Result<(
         params![game_id, now],
     )?;
     conn.execute("UPDATE games SET last_played_at = ?2 WHERE id = ?1", params![game_id, now])?;
+    Ok(())
+}
+
+/// Folds one hardware reading into every open session: running maxima and running average.
+fn record_sample(conn: &Connection, sample: &hardware::SessionSample) -> rusqlite::Result<()> {
+    conn.execute(
+        "UPDATE sessions SET
+            max_cpu_temp = CASE WHEN ?1 IS NULL THEN max_cpu_temp ELSE MAX(COALESCE(max_cpu_temp, ?1), ?1) END,
+            max_gpu_temp = CASE WHEN ?2 IS NULL THEN max_gpu_temp ELSE MAX(COALESCE(max_gpu_temp, ?2), ?2) END,
+            avg_cpu_load = (COALESCE(avg_cpu_load, 0) * load_samples + ?3) / (load_samples + 1),
+            load_samples = load_samples + 1
+         WHERE ended_at IS NULL",
+        params![sample.cpu_temp, sample.gpu_temp, sample.cpu_load],
+    )?;
     Ok(())
 }
 

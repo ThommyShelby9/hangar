@@ -112,6 +112,7 @@ export function StatsPage() {
                   <tr className="border-b border-rivet">
                     <th className="py-2 font-normal">Jeu</th>
                     <th className="py-2 font-normal">Début</th>
+                    <th className="py-2 text-right font-normal">Processeur max</th>
                     <th className="py-2 text-right font-normal">Durée</th>
                   </tr>
                 </thead>
@@ -124,6 +125,9 @@ export function StatsPage() {
                         </Link>
                       </td>
                       <td className="py-2.5 text-alu-dim">{formatDateTime(s.startedAt)}</td>
+                      <td className="py-2.5 text-right text-alu-dim tabular-nums">
+                        {s.maxCpuTemp !== null ? `${Math.round(s.maxCpuTemp)} °C` : "—"}
+                      </td>
                       <td className="py-2.5 text-right tabular-nums">
                         {s.running ? (
                           <span className="inline-flex items-center gap-2 text-primer">

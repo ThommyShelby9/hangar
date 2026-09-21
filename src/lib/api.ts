@@ -157,8 +157,22 @@ export interface StatsOverview {
     startedAt: number;
     durationSecs: number;
     running: boolean;
+    maxCpuTemp: number | null;
+    maxGpuTemp: number | null;
   }[];
 }
+
+/** Sent by the tracker when a game closes after a session worth keeping. */
+export interface SessionEnd {
+  gameId: number;
+  title: string;
+  durationSecs: number;
+  maxCpuTemp: number | null;
+  maxGpuTemp: number | null;
+  avgCpuLoad: number | null;
+}
+
+export const SESSION_ENDED = "session-ended";
 
 /** Emitted by the tracker when a game starts or stops. */
 export const SESSIONS_CHANGED = "sessions-changed";

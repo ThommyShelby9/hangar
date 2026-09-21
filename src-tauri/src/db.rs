@@ -77,6 +77,11 @@ const MIGRATIONS: &[&str] = &[
         game_id       INTEGER NOT NULL REFERENCES games (id) ON DELETE CASCADE,
         PRIMARY KEY (collection_id, game_id)
     );",
+    // 5 — hardware readings during sessions
+    "ALTER TABLE sessions ADD COLUMN max_cpu_temp REAL;
+    ALTER TABLE sessions ADD COLUMN max_gpu_temp REAL;
+    ALTER TABLE sessions ADD COLUMN avg_cpu_load REAL;
+    ALTER TABLE sessions ADD COLUMN load_samples INTEGER NOT NULL DEFAULT 0;",
 ];
 
 pub fn open(path: &Path) -> rusqlite::Result<Connection> {

@@ -3,6 +3,7 @@ import { Titlebar } from "@/components/Titlebar";
 import { Sidebar } from "@/components/Sidebar";
 import { Toaster } from "@/components/Toaster";
 import { CommandPalette } from "@/components/CommandPalette";
+import { SessionSummary } from "@/components/SessionSummary";
 import { useLibraryEvents } from "@/features/library/queries";
 
 export function Shell() {
@@ -18,6 +19,7 @@ export function Shell() {
       </div>
       <Toaster />
       <CommandPalette />
+      <SessionSummary />
     </div>
   );
 }
