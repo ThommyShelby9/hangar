@@ -170,7 +170,7 @@ launcher/
 | `sessions` | id jeu, début, fin, durée, FPS moyen, températures max (phase 3+) |
 | `collections` / `collection_games` | Collections et tags |
 | `watched_folders` | Dossiers surveillés pour l'ajout automatique |
-| `ignored_executables` | Exe écartés par l'utilisateur, pour ne plus les reproposer |
+| `ignored_paths` | Dossiers écartés par l'utilisateur, pour ne plus les reproposer |
 | `controller_profiles` | Profils manette : zones mortes, courbes, réassignations, couleur de barre lumineuse (phases 4 et 6) |
 | `settings` | Clé → valeur (JSON) |
 
@@ -225,52 +225,65 @@ Chaque phase contient : **objectif**, **fonctionnalités** (cases à cocher), **
 
 **Objectif** : tous mes jeux apparaissent avec de belles images et se lancent, qu'ils viennent d'une plateforme ou que je les aie ajoutés moi-même.
 
+> **État (21/09/2026)** : première tranche livrée et testée sur les vrais disques — 9 jeux importés depuis `H:\Games` et `N:\`, jaquettes/fonds/logos SteamGridDB, lancement. Les cases non cochées restent à faire.
+
 #### 1.1 Fiche unique
-- [ ] Modèle `games` + tables associées (voir 4.3)
-- [ ] La provenance n'est qu'une étiquette, toutes les fonctionnalités passent par la fiche
+- [x] Modèle `games` + tables associées (voir 4.3)
+- [x] La provenance n'est qu'une étiquette, toutes les fonctionnalités passent par la fiche
 
 #### 1.2 Ajout manuel
-- [ ] **Glisser-déposer** d'un `.exe`, d'un raccourci `.lnk` / `.url` ou d'un dossier dans la fenêtre
-- [ ] Bouton **« Ajouter un jeu »** avec sélecteur de fichier
-- [ ] **Dossiers surveillés** (par défaut `H:\Games` et `N:\`) : analyse de chaque sous-dossier, propositions à valider, détection des nouveaux jeux ajoutés plus tard (crate `notify`)
-- [ ] Détection du bon exe dans un dossier :
+- [x] **Glisser-déposer** d'un `.exe` ou d'un dossier dans la fenêtre
+- [ ] Glisser-déposer d'un raccourci `.lnk` / `.url`
+- [x] Bouton **« Ajouter un jeu »** avec sélecteur de fichier
+- [x] **Dossiers surveillés** (par défaut `H:\Games` et `N:\`) : analyse de chaque sous-dossier, propositions à valider (bouton « Chercher des jeux »)
+- [ ] Détection automatique des nouveaux jeux ajoutés plus tard (crate `notify`)
+- [x] Détection du bon exe dans un dossier :
   - écarter : désinstalleurs (`unins*.exe`, `uninstall*`), `UnityCrashHandler*`, `CrashReport*`, redistribuables (`vcredist*`, `DXSETUP`, `dotnet*`, `UE4PrereqSetup*`), outils de mise à jour, `*setup*` ;
   - classer le reste : ressemblance avec le nom du dossier, taille, présence d'infos de version ;
   - **toujours demander confirmation** avant d'ajouter.
-- [ ] Exe écartés mémorisés (`ignored_executables`) pour ne plus les reproposer
-- [ ] Cas réels observés à gérer :
+- [x] Dossiers écartés mémorisés (`ignored_paths`) pour ne plus les reproposer
+- [x] Cas réels observés à gérer :
   - `H:\Games` ne contient que des jeux → scan de chaque sous-dossier ;
   - `N:\` est **mélangé** (jeux, films, archives `.rar`/`.zip`, environnements Python `*-venv`, dossiers système) → ignorer les dossiers sans exe de jeu, les dossiers système (`$RECYCLE.BIN`, `System Volume Information`, `Config.Msi`) et les venv ;
   - dossiers **d'installation de repacks** (`[FitGirl Repack]`, `[DODI Repack]` contenant `setup.exe`) → signalés « installeur, pas un jeu » au lieu d'être proposés ;
-  - émulateurs présents (ex. **shadPS4**) → proposer de l'ajouter comme émulateur (phase 1.5)
+  - copies d'exe dans `NoDVD\…`, `_Windows 7 Fix\…`, `_Redist\…` ignorées ; exe Unreal dans `Binaries\Win64` trouvés.
+- [ ] Émulateurs présents (ex. **shadPS4**) → proposer de l'ajouter comme émulateur (voir 1.5)
 
 #### 1.3 Scanners de plateformes
-- [ ] **Steam** : `libraryfolders.vdf` + `appmanifest_*.acf` ; lancement via `steam://rungameid/<id>`
-- [ ] **Epic** : `C:\ProgramData\Epic\EpicGamesLauncher\Data\Manifests\*.item` (lecture seule) ; lancement via `com.epicgames.launcher://apps/<id>?action=launch`
-- [ ] Architecture « un scanner = un fichier » pour ajouter facilement les autres plateformes (phase 7)
-- [ ] Re-scan manuel + au démarrage ; les jeux disparus passent en statut « introuvable » (historique conservé)
+- [x] **Steam** : `libraryfolders.vdf` + `appmanifest_*.acf` ; lancement via `steam://rungameid/<id>` (Steam n'est plus installé sur ce PC : le scanner ne trouve rien, sans erreur)
+- [x] **Epic** : `C:\ProgramData\Epic\EpicGamesLauncher\Data\Manifests\*.item` (lecture seule) ; lancement via `com.epicgames.launcher://apps/<id>?action=launch` (Epic non installé)
+- [x] Architecture « un scanner = un fichier » pour ajouter facilement les autres plateformes (phase 7)
+- [x] Scan au démarrage ; les jeux disparus passent en statut « introuvable » (historique conservé)
 
 #### 1.4 Identification et métadonnées
-- [ ] Lecture du **nom du produit** dans les infos de version de l'exe
-- [ ] **Nettoyage du nom** : suppression des versions (`v1.2.3`), crochets, suffixes de groupes, mentions d'édition, points/tirets/underscores
-- [ ] Recherche **IGDB** + **SteamGridDB** → écran de choix avec les **jaquettes** des meilleurs résultats
-- [ ] Repli si rien ne correspond : **icône extraite de l'exe** + fond généré à partir de ses couleurs
-- [ ] Modification libre de la fiche : titre, jaquette, fond, logo, description (choix dans SteamGridDB ou **images perso**)
-- [ ] Images téléchargées une fois et mises en cache dans `data\cache\`
+- [x] Lecture du **nom du produit** dans les infos de version de l'exe
+- [x] **Nettoyage du nom** : suppression des versions (`v1.2.3`), crochets, suffixes de groupes, mentions d'édition, points/tirets/underscores
+- [x] **SteamGridDB** : identification automatique (accents et chiffres romains tolérés, version PC préférée, aucun résultat plutôt qu'un mauvais) + écran de choix du jeu et de chaque image
+- [ ] **IGDB** : description, genres, notes (clé à fournir)
+- [x] Repli si rien ne correspond : tuile générée avec le titre
+- [ ] Repli : **icône extraite de l'exe**
+- [x] Modification de la fiche : titre, jaquette, fond, logo, icône (choix dans SteamGridDB)
+- [ ] Modification : description, **images perso**
+- [x] Images téléchargées une fois et mises en cache dans `data\cache\` (servies par le protocole `hangar://`)
 
 #### 1.5 Lancement
-- [ ] **Plusieurs actions de lancement** par jeu (« Jouer », « Launcher », « Mods », « Configuration »), une par défaut
-- [ ] Options : arguments, dossier de travail, exécution en administrateur
+- [x] **Plusieurs actions de lancement** par jeu (« Jouer » + « Launcher » / « Configuration » détectés automatiquement), une par défaut
+- [ ] Ajouter / supprimer des actions à la main (« Mods »…)
+- [x] Options : arguments, exécution en administrateur (dossier de travail = dossier de l'exe)
 - [ ] Scripts **avant** et **après** le jeu
 - [ ] Émulateurs : jeu = ROM + modèle de commande de l'émulateur (ex. `retroarch.exe -L <core> "{rom}"`)
 
 #### 1.6 Interface
-- [ ] **Grille** de jaquettes (virtualisée pour les grosses bibliothèques)
-- [ ] **Fiche du jeu** : fond héro, logo, description, bouton Jouer, actions de lancement, infos
-- [ ] Recherche instantanée tolérante aux fautes (`fuse.js`)
-- [ ] Filtres : provenance, installé/introuvable, favoris ; tris : nom, dernier lancement, date d'ajout
-- [ ] Favoris, collections, tags, « récemment joués »
+- [x] **Grille** de jaquettes
+- [ ] Virtualisation de la grille (inutile tant que la bibliothèque est petite)
+- [x] **Fiche du jeu** : fond héro, logo, bouton Jouer, actions de lancement, infos
+- [x] Recherche instantanée tolérante aux fautes (`fuse.js`)
+- [x] Filtre favoris
+- [ ] Filtres provenance / installé-introuvable ; tris : nom, dernier lancement, date d'ajout
+- [x] Favoris
+- [ ] Collections, tags, « récemment joués »
 - [ ] **Relocaliser** un jeu introuvable (disque externe, lettre de lecteur changée)
+- [x] Retirer un jeu de la bibliothèque (les fichiers restent sur le disque)
 - [ ] **Désinstaller** : lance le désinstalleur s'il existe, sinon supprime le dossier après double confirmation
 
 **Critères de fin**
