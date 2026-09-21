@@ -88,68 +88,78 @@ function GameView({ game }: { game: GameDetail }) {
 
         <BackLink />
 
-        <div>
-          {logo ? (
-            <img
-              src={logo}
-              alt={game.title}
-              className="max-h-36 max-w-[min(30rem,70%)] object-contain object-left drop-shadow-[0_4px_24px_rgb(0_0_0/0.6)]"
-            />
-          ) : (
-            <h1 className="max-w-[20ch] font-display text-[4rem] leading-[0.9] font-bold drop-shadow-lg">
-              {game.title}
-            </h1>
-          )}
+        <div className="flex items-end gap-8">
+          {/* Same layoutId as the library card: the cover flies from the grid to here. */}
+          <motion.div
+            layoutId={`cover-${game.id}`}
+            transition={{ type: "spring", stiffness: 260, damping: 30 }}
+            className="hidden w-40 shrink-0 shadow-2xl shadow-black/60 lg:block"
+          >
+            <GameCover game={game} />
+          </motion.div>
+          <div className="min-w-0">
+            {logo ? (
+              <img
+                src={logo}
+                alt={game.title}
+                className="max-h-36 max-w-[min(30rem,70%)] object-contain object-left drop-shadow-[0_4px_24px_rgb(0_0_0/0.6)]"
+              />
+            ) : (
+              <h1 className="max-w-[20ch] font-display text-[4rem] leading-[0.9] font-bold drop-shadow-lg">
+                {game.title}
+              </h1>
+            )}
 
-          <div className="mt-7 flex flex-wrap items-center gap-3">
-            <Button
-              variant="primary"
-              size="lg"
-              disabled={!primary || missing || running || launch.isPending}
-              onClick={() => launch.mutate(primary?.id)}
-              className="min-w-44"
-            >
-              {running ? (
-                <>
-                  <span className="size-2.5 rounded-full bg-current" />
-                  En cours
-                </>
-              ) : (
-                <>
-                  <Play size={20} className="fill-current" />
-                  Jouer
-                </>
-              )}
-            </Button>
-            {others.map((action) => (
+            <div className="mt-7 flex flex-wrap items-center gap-3">
               <Button
-                key={action.id}
-                disabled={missing}
-                onClick={() => launch.mutate(action.id)}
-                className="h-12 bg-bay/80 backdrop-blur"
+                variant="primary"
+                size="lg"
+                disabled={!primary || missing || running || launch.isPending}
+                onClick={() => launch.mutate(primary?.id)}
+                className="min-w-44"
               >
-                {action.name}
+                {running ? (
+                  <>
+                    <span className="size-2.5 rounded-full bg-current" />
+                    En cours
+                  </>
+                ) : (
+                  <>
+                    <Play size={20} className="fill-current" />
+                    Jouer
+                  </>
+                )}
               </Button>
-            ))}
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={game.favorite ? "Retirer des favoris" : "Ajouter aux favoris"}
-              aria-pressed={game.favorite}
-              onClick={() => favorite.mutate()}
-              className="size-12"
-            >
-              <Heart size={20} className={cn(game.favorite && "fill-signal text-signal")} />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Modifier le jeu"
-              onClick={() => setDialog("edit")}
-              className="size-12"
-            >
-              <Pencil size={18} />
-            </Button>
+              {others.map((action) => (
+                <Button
+                  key={action.id}
+                  disabled={missing}
+                  onClick={() => launch.mutate(action.id)}
+                  className="h-12 bg-bay/80 backdrop-blur"
+                >
+                  {action.name}
+                </Button>
+              ))}
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={game.favorite ? "Retirer des favoris" : "Ajouter aux favoris"}
+                aria-pressed={game.favorite}
+                onClick={() => favorite.mutate()}
+                className="size-12"
+              >
+                <Heart size={20} className={cn(game.favorite && "fill-signal text-signal")} />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Modifier le jeu"
+                onClick={() => setDialog("edit")}
+                className="size-12"
+              >
+                <Pencil size={18} />
+              </Button>
+            </div>
           </div>
         </div>
       </section>
@@ -163,13 +173,6 @@ function GameView({ game }: { game: GameDetail }) {
       )}
 
       <section className="flex flex-wrap items-end gap-x-14 gap-y-4 px-10 pt-8">
-        <motion.div
-          layoutId={`cover-${game.id}`}
-          transition={{ type: "spring", stiffness: 260, damping: 30 }}
-          className="relative z-10 -mt-32 w-36 shrink-0 shadow-2xl shadow-black/50"
-        >
-          <GameCover game={game} />
-        </motion.div>
         <Figure label="Temps de jeu" value={stats ? formatDuration(stats.totalSecs) : "…"} />
         <Figure label="Sessions" value={stats ? String(stats.sessionCount) : "…"} />
         <Figure
