@@ -12,7 +12,7 @@ use rusqlite::{params, Connection};
 use sysinfo::{ProcessRefreshKind, ProcessesToUpdate, System, UpdateKind};
 use tauri::{AppHandle, Emitter, Manager};
 
-use crate::{commands, db, hardware, perf, AppState};
+use crate::{commands, db, hardware, perf, saves, AppState};
 use matcher::{game_for, install_dir_key, RunningProcess, WatchedGame};
 use sessions::{Event, Sessions, MIN_SESSION_SECS};
 
@@ -121,6 +121,7 @@ fn run(app: AppHandle) {
             }
         }
         for summary in ended {
+            backup_after_session(&app, summary.game_id, summary.title.clone());
             let _ = app.emit(SESSION_ENDED, summary);
         }
 
@@ -133,6 +134,21 @@ fn run(app: AppHandle) {
         }
         std::thread::sleep(Duration::from_secs(TICK_SECS as u64));
     }
+}
+
+/// The game just closed: its saves are fresh, back them up (in the background, Ludusavi takes a moment).
+fn backup_after_session(app: &AppHandle, game_id: i64, title: String) {
+    let state = app.state::<AppState>();
+    let enabled = with_db(app, |c| saves::settings(c, &state.paths)).is_some_and(|s| s.auto);
+    if !enabled || !saves::Ludusavi::new(&state.paths).installed() {
+        return;
+    }
+    let app = app.clone();
+    std::thread::spawn(move || {
+        let state = app.state::<AppState>();
+        let error = saves::backup(&state.paths, &state.db, game_id).err();
+        let _ = app.emit(commands::SAVES_BACKED_UP, commands::SavesBackedUp { game_id, title, error });
+    });
 }
 
 fn watched_games(conn: &Connection) -> rusqlite::Result<Vec<WatchedGame>> {

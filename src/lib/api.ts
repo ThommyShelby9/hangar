@@ -358,3 +358,48 @@ export const shotsApi = {
   thumbUrl: (path: string) => `http://hangar.localhost/~thumb${shotParam(path)}`,
   url: (path: string) => `http://hangar.localhost/~shot${shotParam(path)}`,
 };
+
+export interface SavesSettings {
+  installed: boolean;
+  version: string;
+  dir: string;
+  auto: boolean;
+  keep: number;
+}
+
+export interface SaveBackup {
+  id: string;
+  /** ISO date. */
+  when: string;
+}
+
+export interface GameSaves {
+  installed: boolean;
+  /** Ludusavi's name for the game; null when it doesn't know it and no folder was chosen. */
+  name: string | null;
+  customDir: string | null;
+  emulatorDirs: string[];
+  files: string[];
+  totalBytes: number;
+  backups: SaveBackup[];
+  lastBackupAt: number | null;
+  lastError: string | null;
+}
+
+/** Emitted after an automatic backup at the end of a session. */
+export const SAVES_BACKED_UP = "saves-backed-up";
+export interface SavesBackedUp {
+  gameId: number;
+  title: string;
+  error: string | null;
+}
+
+export const savesApi = {
+  settings: () => invoke<SavesSettings>("saves_settings"),
+  install: () => invoke<void>("install_ludusavi"),
+  set: (key: "dir" | "auto" | "keep", value: string) => invoke<void>("set_saves_setting", { key, value }),
+  game: (id: number) => invoke<GameSaves>("game_saves", { id }),
+  backup: (id: number) => invoke<boolean>("backup_game_saves", { id }),
+  restore: (id: number, backup: string) => invoke<void>("restore_game_saves", { id, backup }),
+  setDir: (id: number, dir: string | null) => invoke<void>("set_game_save_dir", { id, dir }),
+};

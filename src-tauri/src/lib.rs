@@ -8,6 +8,7 @@ mod library;
 mod metadata;
 mod paths;
 mod perf;
+mod saves;
 mod scanners;
 mod single_instance;
 mod tracker;
@@ -163,6 +164,13 @@ pub fn run() {
             commands::list_screenshots,
             commands::reveal_screenshot,
             commands::delete_screenshot,
+            commands::saves_settings,
+            commands::install_ludusavi,
+            commands::set_saves_setting,
+            commands::game_saves,
+            commands::backup_game_saves,
+            commands::restore_game_saves,
+            commands::set_game_save_dir,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

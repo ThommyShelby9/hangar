@@ -85,6 +85,14 @@ const MIGRATIONS: &[&str] = &[
     // 6 — "last played" came from the Play button; it now follows recorded sessions only
     "UPDATE games SET last_played_at =
         (SELECT MAX(COALESCE(ended_at, last_seen_at)) FROM sessions WHERE sessions.game_id = games.id);",
+    // 7 — save backups (Ludusavi)
+    "CREATE TABLE game_saves (
+        game_id        INTEGER PRIMARY KEY REFERENCES games (id) ON DELETE CASCADE,
+        ludusavi_name  TEXT,                          -- NULL: not looked up yet; '': unknown to Ludusavi
+        custom_dir     TEXT,                          -- save folder chosen by hand
+        last_backup_at INTEGER,
+        last_error     TEXT
+    );",
 ];
 
 pub fn open(path: &Path) -> rusqlite::Result<Connection> {

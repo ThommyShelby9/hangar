@@ -510,7 +510,7 @@ Pour la DS3, DsHidMini (installé en phase 4) propose déjà son propre mode XIn
 - [ ] Affichage de l'espace disque par jeu
 
 #### Données
-- [ ] **Sauvegarde des saves** avec la base de **Ludusavi** ; dossier des saves réglable à la main pour les jeux inconnus ; destination hors C: ; synchronisation cloud optionnelle
+- [x] **Sauvegarde des saves** avec **Ludusavi** portable (installé depuis Réglages, réglages dans dataludusavi) : sauvegarde automatique à la fin de chaque session, N versions gardées, restauration depuis la page du jeu (l'état actuel est sauvegardé avant) ; jeux d'émulateurs Steam (CODEX, RUNE, GSE…) reconnus par leur identifiant ; dossier ajouté à la main pour les jeux inconnus ; destination hors C:. Reste : synchronisation cloud
 - [ ] Export / import de la bibliothèque (JSON)
 
 #### Plateformes supplémentaires

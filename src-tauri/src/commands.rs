@@ -5,7 +5,7 @@ use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::library::{self, folders, names, GamePatch, LaunchAction, NewManualGame};
 use crate::metadata::{self, sgdb};
-use crate::{controllers, db, gallery, hardware, launcher, paths, perf, scanners, tracker, tray, AppState};
+use crate::{controllers, db, gallery, hardware, launcher, paths, perf, saves, scanners, tracker, tray, AppState};
 
 /// Emitted whenever games, images or statuses change; the UI refetches the library.
 pub const LIBRARY_CHANGED: &str = "library-changed";
@@ -514,6 +514,100 @@ pub fn delete_screenshot(app: AppHandle, path: String) -> CmdResult<()> {
     library::manage::recycle(&path)?;
     app.state::<AppState>().shots.remove(&path);
     Ok(())
+}
+
+// ── Save backups ────────────────────────────────────────────────────────────
+
+/// Emitted with a `SavesBackedUp` after an automatic backup at the end of a session.
+pub const SAVES_BACKED_UP: &str = "saves-backed-up";
+
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct SavesBackedUp {
+    pub game_id: i64,
+    pub title: String,
+    /// `None` when it went fine (or there was nothing to back up).
+    pub error: Option<String>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SavesSettings {
+    installed: bool,
+    version: &'static str,
+    dir: String,
+    auto: bool,
+    keep: u8,
+}
+
+#[tauri::command]
+pub fn saves_settings(app: AppHandle) -> CmdResult<SavesSettings> {
+    let state = app.state::<AppState>();
+    let s = with_db(&app, |c| saves::settings(c, &state.paths))?;
+    Ok(SavesSettings {
+        installed: saves::Ludusavi::new(&state.paths).installed(),
+        version: saves::VERSION,
+        dir: s.dir.display().to_string(),
+        auto: s.auto,
+        keep: s.keep,
+    })
+}
+
+#[tauri::command]
+pub async fn install_ludusavi(app: AppHandle) -> CmdResult<()> {
+    let tool = saves::Ludusavi::new(&app.state::<AppState>().paths);
+    tool.install().await
+}
+
+/// `key`: "dir" (a folder outside C:), "auto" ("true"/"false") or "keep" (backups kept per game).
+#[tauri::command]
+pub fn set_saves_setting(app: AppHandle, key: String, value: String) -> CmdResult<()> {
+    let (setting, value) = match key.as_str() {
+        "dir" => {
+            if paths::is_on_system_drive(Path::new(&value)) {
+                return Err("Choisis un dossier hors du disque C:.".into());
+            }
+            (saves::DIR, value)
+        }
+        "auto" => (saves::AUTO, if value == "false" { "false".into() } else { "true".into() }),
+        "keep" => (saves::KEEP, value.parse::<u8>().map_err(err)?.clamp(1, 50).to_string()),
+        _ => return Err(format!("réglage inconnu : {key}")),
+    };
+    with_db(&app, |c| db::set_setting(c, setting, &value))
+}
+
+/// Runs Ludusavi: slow, so off the async runtime's threads.
+async fn with_saves<T: Send + 'static>(
+    app: AppHandle,
+    f: impl FnOnce(&paths::AppPaths, &std::sync::Mutex<rusqlite::Connection>) -> Result<T, String> + Send + 'static,
+) -> CmdResult<T> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<AppState>();
+        f(&state.paths, &state.db)
+    })
+    .await
+    .map_err(err)?
+}
+
+#[tauri::command]
+pub async fn game_saves(app: AppHandle, id: i64) -> CmdResult<saves::Overview> {
+    with_saves(app, move |p, db| saves::overview(p, db, id)).await
+}
+
+/// `true` when files were backed up, `false` when the game has none that Ludusavi can find.
+#[tauri::command]
+pub async fn backup_game_saves(app: AppHandle, id: i64) -> CmdResult<bool> {
+    with_saves(app, move |p, db| saves::backup(p, db, id)).await
+}
+
+#[tauri::command]
+pub async fn restore_game_saves(app: AppHandle, id: i64, backup: String) -> CmdResult<()> {
+    with_saves(app, move |p, db| saves::restore(p, db, id, &backup)).await
+}
+
+#[tauri::command]
+pub fn set_game_save_dir(app: AppHandle, id: i64, dir: Option<String>) -> CmdResult<()> {
+    with_db(&app, |c| saves::set_custom_dir(c, id, dir.as_deref()))
 }
 
 // ── Watched folders ─────────────────────────────────────────────────────────

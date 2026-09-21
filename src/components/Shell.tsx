@@ -1,6 +1,9 @@
 import { useEffect } from "react";
 import { Outlet, useNavigate } from "react-router";
 import { listen } from "@tauri-apps/api/event";
+import { useQueryClient } from "@tanstack/react-query";
+import { SAVES_BACKED_UP, type SavesBackedUp } from "@/lib/api";
+import { toast } from "@/lib/toast";
 import { Titlebar } from "@/components/Titlebar";
 import { Sidebar } from "@/components/Sidebar";
 import { Toaster } from "@/components/Toaster";
@@ -18,6 +21,17 @@ export function Shell() {
       off.then((f) => f());
     };
   }, [navigate]);
+  // Automatic backups run silently; only a failure is worth a message.
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    const off = listen<SavesBackedUp>(SAVES_BACKED_UP, ({ payload }) => {
+      void queryClient.invalidateQueries({ queryKey: ["game-saves", payload.gameId] });
+      if (payload.error) toast.error(`Sauvegarde de ${payload.title} impossible : ${payload.error}`);
+    });
+    return () => {
+      off.then((f) => f());
+    };
+  }, [queryClient]);
   return (
     <div className="flex h-full flex-col bg-tarmac-glass">
       <Titlebar />
