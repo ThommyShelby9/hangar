@@ -1,21 +1,33 @@
 import { useEffect, useMemo, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "motion/react";
 import Fuse from "fuse.js";
 import { open } from "@tauri-apps/plugin-dialog";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { FolderSearch, Plus, Search } from "lucide-react";
-import { api, type FolderCandidate, type Game } from "@/lib/api";
+import { api, manageApi, type FolderCandidate, type Game } from "@/lib/api";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/Button";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
-import { useGames, useRunningGames } from "@/features/library/queries";
+import {
+  newGamesKey,
+  useGames,
+  useNewGamesCount,
+  useRunningGames,
+} from "@/features/library/queries";
 import { GameCard } from "@/features/library/GameCard";
 import { ImportDialog } from "@/features/library/ImportDialog";
 
-type Filter = "all" | "favorites";
+type Filter = "all" | "favorites" | "missing" | `collection-${number}`;
+
+function matchesFilter(game: Game, filter: Filter) {
+  if (filter === "all") return true;
+  if (filter === "favorites") return game.favorite;
+  if (filter === "missing") return game.status === "missing";
+  return game.collections.includes(Number(filter.slice("collection-".length)));
+}
 
 const SORTS = {
   title: { label: "Nom", compare: (a: Game, b: Game) => a.sortTitle.localeCompare(b.sortTitle) },
@@ -34,6 +46,12 @@ type Sort = keyof typeof SORTS;
 
 export function LibraryPage() {
   const { data: games = [], isPending } = useGames();
+  const { data: collections = [] } = useQuery({
+    queryKey: ["collections"],
+    queryFn: manageApi.collections,
+  });
+  const queryClient = useQueryClient();
+  const newGames = useNewGamesCount();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [sort, setSort] = useState<Sort>("title");
@@ -44,6 +62,7 @@ export function LibraryPage() {
   const scan = useMutation({
     mutationFn: api.scanFolders,
     onSuccess: (found) => {
+      queryClient.setQueryData(newGamesKey, 0);
       if (found.length === 0) toast.info("Aucun nouveau jeu dans les dossiers surveillés.");
       else setCandidates(found);
     },
@@ -54,8 +73,8 @@ export function LibraryPage() {
     mutationFn: async () => {
       const picked = await open({
         multiple: true,
-        title: "Choisir l'exécutable du jeu",
-        filters: [{ name: "Jeux", extensions: ["exe"] }],
+        title: "Choisir le jeu ou son raccourci",
+        filters: [{ name: "Jeux et raccourcis", extensions: ["exe", "lnk", "url"] }],
       });
       return picked?.length ? api.analyzePaths(picked) : null;
     },
@@ -63,13 +82,31 @@ export function LibraryPage() {
     onError: toast.error,
   });
 
+  const missingCount = games.filter((g) => g.status === "missing").length;
+  const filters: [Filter, string][] = [
+    ["all", "Tous"],
+    ["favorites", "Favoris"],
+    ...(missingCount > 0 ? ([["missing", "Introuvables"]] as [Filter, string][]) : []),
+    ...collections.map((c): [Filter, string] => [`collection-${c.id}`, c.name]),
+  ];
+
   const visible = useMemo(() => {
-    const shown = games.filter((g) => !g.hidden && (filter === "all" || g.favorite));
+    const shown = games.filter((g) => !g.hidden && matchesFilter(g, filter));
     if (!query.trim()) return [...shown].sort(SORTS[sort].compare);
     return new Fuse(shown, { keys: ["title"], threshold: 0.35, ignoreLocation: true })
       .search(query.trim())
       .map((r) => r.item);
   }, [games, query, filter, sort]);
+
+  const recent = useMemo(
+    () =>
+      games
+        .filter((g) => !g.hidden && g.lastPlayedAt)
+        .sort((a, b) => (b.lastPlayedAt ?? 0) - (a.lastPlayedAt ?? 0))
+        .slice(0, 6),
+    [games],
+  );
+  const showRecent = filter === "all" && !query.trim() && recent.length > 0;
 
   const actions = (
     <>
@@ -89,6 +126,25 @@ export function LibraryPage() {
   return (
     <div className="relative min-h-full">
       <PageHeader title="Bibliothèque" actions={libraryEmpty ? undefined : actions} />
+
+      {newGames > 0 && !libraryEmpty && (
+        <div className="mx-10 mb-6 flex max-w-3xl flex-wrap items-center gap-4 rounded-panel border border-signal/40 bg-signal/10 px-5 py-3">
+          <FolderSearch size={18} className="text-signal" />
+          <p className="flex-1">
+            {newGames === 1
+              ? "1 nouveau jeu dans tes dossiers."
+              : `${newGames} nouveaux jeux dans tes dossiers.`}
+          </p>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => scan.mutate()}
+            disabled={scan.isPending}
+          >
+            Voir
+          </Button>
+        </div>
+      )}
 
       {libraryEmpty ? (
         <EmptyState title="Le hangar est vide" art={<EmptyStand />}>
@@ -113,13 +169,8 @@ export function LibraryPage() {
                 className="h-9 w-full rounded-control border border-rivet bg-bay pr-3 pl-9 placeholder:text-alu-dim/70 focus:border-signal focus:outline-none"
               />
             </label>
-            <div role="radiogroup" aria-label="Filtre" className="flex gap-1">
-              {(
-                [
-                  ["all", "Tous"],
-                  ["favorites", "Favoris"],
-                ] as const
-              ).map(([value, label]) => (
+            <div role="radiogroup" aria-label="Filtre" className="flex flex-wrap gap-1">
+              {filters.map(([value, label]) => (
                 <button
                   key={value}
                   role="radio"
@@ -157,16 +208,35 @@ export function LibraryPage() {
 
           {visible.length === 0 ? (
             <EmptyState title="Aucun jeu ne correspond">
-              {query ? `Rien pour « ${query} ».` : "Tu n'as pas encore de favori."}
+              {query
+                ? `Rien pour « ${query} ».`
+                : filter === "favorites"
+                  ? "Tu n'as pas encore de favori."
+                  : "Aucun jeu dans cette collection."}
             </EmptyState>
           ) : (
-            <ul className="grid grid-cols-[repeat(auto-fill,minmax(10.5rem,1fr))] gap-x-5 gap-y-7 px-10 pb-12">
-              {visible.map((game) => (
-                <li key={game.id}>
-                  <GameCard game={game} running={running.has(game.id)} />
-                </li>
-              ))}
-            </ul>
+            <>
+              {showRecent && (
+                <section className="px-10 pb-10">
+                  <h2 className="mb-4 font-display text-title font-semibold">Joués récemment</h2>
+                  <ul className="grid grid-cols-[repeat(auto-fill,minmax(10.5rem,1fr))] gap-x-5">
+                    {recent.map((game) => (
+                      <li key={game.id}>
+                        <GameCard game={game} running={running.has(game.id)} shared={false} />
+                      </li>
+                    ))}
+                  </ul>
+                  <h2 className="mt-10 font-display text-title font-semibold">Tous les jeux</h2>
+                </section>
+              )}
+              <ul className="grid grid-cols-[repeat(auto-fill,minmax(10.5rem,1fr))] gap-x-5 gap-y-7 px-10 pb-12">
+                {visible.map((game) => (
+                  <li key={game.id}>
+                    <GameCard game={game} running={running.has(game.id)} />
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
         </>
       )}
@@ -181,7 +251,7 @@ export function LibraryPage() {
           >
             <div className="rounded-panel border-2 border-dashed border-signal px-16 py-12 text-center">
               <p className="font-display text-title font-semibold">Dépose ici</p>
-              <p className="mt-1 text-alu-dim">Un .exe ou un dossier de jeu</p>
+              <p className="mt-1 text-alu-dim">Un .exe, un raccourci ou un dossier de jeu</p>
             </div>
           </motion.div>
         )}

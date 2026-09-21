@@ -247,6 +247,7 @@ mod tests {
                 dir: r"O:\tmp\hangar\FakeGame".into(),
                 title: "Fake Game".into(),
                 exe: r"O:\tmp\hangar\FakeGame\FakeGame.exe".into(),
+                args: String::new(),
                 extras: vec![],
             },
         )

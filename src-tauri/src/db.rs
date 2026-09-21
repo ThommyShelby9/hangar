@@ -67,6 +67,16 @@ const MIGRATIONS: &[&str] = &[
         learned  INTEGER NOT NULL DEFAULT 1,          -- 1: picked by Hangar, 0: chosen by the user
         PRIMARY KEY (game_id, exe_name)
     );",
+    // 4 — collections
+    "CREATE TABLE collections (
+        id   INTEGER PRIMARY KEY,
+        name TEXT    NOT NULL UNIQUE
+    );
+    CREATE TABLE collection_games (
+        collection_id INTEGER NOT NULL REFERENCES collections (id) ON DELETE CASCADE,
+        game_id       INTEGER NOT NULL REFERENCES games (id) ON DELETE CASCADE,
+        PRIMARY KEY (collection_id, game_id)
+    );",
 ];
 
 pub fn open(path: &Path) -> rusqlite::Result<Connection> {

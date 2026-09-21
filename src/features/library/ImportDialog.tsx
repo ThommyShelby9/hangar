@@ -39,6 +39,7 @@ export function ImportDialog({
           dir: r.candidate.dir,
           title: r.title.trim(),
           exe: r.exe,
+          args: r.candidate.args,
           extras: r.candidate.extras,
         })),
       );

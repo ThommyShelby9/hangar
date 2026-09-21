@@ -22,6 +22,8 @@ export interface Game {
   addedAt: number;
   lastPlayedAt: number | null;
   playtimeSecs: number;
+  /** Ids of the collections the game belongs to. */
+  collections: number[];
   /** Files relative to the cache folder, see `imageUrl`. */
   images: Partial<Record<ArtKind, string>>;
 }
@@ -57,12 +59,16 @@ export interface FolderCandidate {
   kind: "game" | "installer";
   exes: ExeCandidate[];
   extras: ExtraAction[];
+  /** Arguments carried by a .lnk shortcut. */
+  args: string;
 }
 
 export interface NewManualGame {
   dir: string;
   title: string;
+  /** Executable, or a link such as steam://… for games added from a .url shortcut. */
   exe: string;
+  args: string;
   extras: ExtraAction[];
 }
 
@@ -265,4 +271,36 @@ export const controllersApi = {
   live: (on: boolean) => invoke<void>("controllers_live", { on }),
   rumble: (id: number, strong: boolean) => invoke<void>("controller_rumble", { id, strong }),
   motion: (id: number, enabled: boolean) => invoke<void>("controller_motion", { id, enabled }),
+};
+
+export interface Collection {
+  id: number;
+  name: string;
+  gameCount: number;
+}
+
+export interface UninstallInfo {
+  installDir: string | null;
+  uninstaller: string | null;
+}
+
+/** Emitted at start-up with the number of new games waiting in the watched folders. */
+export const NEW_GAMES_FOUND = "new-games-found";
+
+export const manageApi = {
+  relocate: (id: number, dir: string) => invoke<void>("relocate_game", { id, dir }),
+  uninstallInfo: (id: number) => invoke<UninstallInfo>("uninstall_info", { id }),
+  uninstall: (id: number, mode: "uninstaller" | "recycle") =>
+    invoke<void>("uninstall_game", { id, mode }),
+  setImageFile: (id: number, kind: ArtKind, path: string) =>
+    invoke<void>("set_game_image_file", { id, kind, path }),
+  addAction: (gameId: number, name: string, target: string, args: string) =>
+    invoke<number>("add_action", { gameId, name, target, args }),
+  removeAction: (id: number) => invoke<void>("remove_action", { id }),
+  setDefaultAction: (id: number) => invoke<void>("set_default_action", { id }),
+  collections: () => invoke<Collection[]>("list_collections"),
+  createCollection: (name: string) => invoke<number>("create_collection", { name }),
+  deleteCollection: (id: number) => invoke<void>("delete_collection", { id }),
+  setGameCollections: (id: number, collections: number[]) =>
+    invoke<void>("set_game_collections", { id, collections }),
 };

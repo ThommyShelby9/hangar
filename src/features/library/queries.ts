@@ -1,10 +1,16 @@
 import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { listen } from "@tauri-apps/api/event";
-import { api, LIBRARY_CHANGED, SESSIONS_CHANGED, statsApi } from "@/lib/api";
+import { api, LIBRARY_CHANGED, NEW_GAMES_FOUND, SESSIONS_CHANGED, statsApi } from "@/lib/api";
 
 export const gamesKey = ["games"] as const;
 export const gameKey = (id: number) => ["game", id] as const;
+/** Number of new games found in the watched folders at start-up (0 once reviewed). */
+export const newGamesKey = ["new-games"] as const;
+
+export function useNewGamesCount() {
+  return useQuery({ queryKey: newGamesKey, queryFn: () => 0, staleTime: Infinity }).data ?? 0;
+}
 
 export function useGames() {
   return useQuery({ queryKey: gamesKey, queryFn: api.listGames });
@@ -36,9 +42,13 @@ export function useLibraryEvents() {
       queryClient.invalidateQueries({ queryKey: ["running"] });
       queryClient.invalidateQueries({ queryKey: ["stats"] });
     });
+    const offNewGames = listen<number>(NEW_GAMES_FOUND, (e) =>
+      queryClient.setQueryData(newGamesKey, e.payload),
+    );
     return () => {
       offLibrary.then((off) => off());
       offSessions.then((off) => off());
+      offNewGames.then((off) => off());
     };
   }, [queryClient]);
 }

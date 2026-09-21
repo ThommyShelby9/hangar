@@ -76,9 +76,10 @@ pub fn run() {
 
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
-                if let Err(e) = commands::scan_platforms(handle).await {
+                if let Err(e) = commands::scan_platforms(handle.clone()).await {
                     eprintln!("Hangar : scan des plateformes impossible : {e}");
                 }
+                commands::announce_new_games(handle).await;
             });
             Ok(())
         })
@@ -104,6 +105,17 @@ pub fn run() {
             commands::sgdb_images,
             commands::set_game_sgdb,
             commands::set_game_image,
+            commands::relocate_game,
+            commands::uninstall_info,
+            commands::uninstall_game,
+            commands::set_game_image_file,
+            commands::add_action,
+            commands::remove_action,
+            commands::set_default_action,
+            commands::list_collections,
+            commands::create_collection,
+            commands::delete_collection,
+            commands::set_game_collections,
             commands::running_games,
             commands::game_stats,
             commands::stats_overview,

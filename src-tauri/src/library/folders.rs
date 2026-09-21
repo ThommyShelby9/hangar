@@ -53,6 +53,8 @@ pub struct FolderCandidate {
     pub kind: &'static str,
     pub exes: Vec<ExeCandidate>,
     pub extras: Vec<ExtraAction>,
+    /// Arguments carried by a `.lnk` shortcut.
+    pub args: String,
 }
 
 /// Analyses one game folder. `None` when there is nothing that looks like a game.
@@ -67,6 +69,7 @@ pub fn analyze(dir: &Path) -> Option<FolderCandidate> {
             kind: "installer",
             exes: vec![],
             extras: vec![],
+            args: String::new(),
         });
     }
 
@@ -110,6 +113,7 @@ pub fn analyze(dir: &Path) -> Option<FolderCandidate> {
         kind: "game",
         exes: games.into_iter().map(|(_, exe)| exe).collect(),
         extras,
+        args: String::new(),
     })
 }
 

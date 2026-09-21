@@ -8,7 +8,16 @@ import { cn } from "@/lib/utils";
 
 const MAX_TILT = 9; // degrees
 
-export function GameCard({ game, running }: { game: Game; running?: boolean }) {
+/** `shared`: the cover flies to the game page. Off for duplicates (the "recently played" row). */
+export function GameCard({
+  game,
+  running,
+  shared = true,
+}: {
+  game: Game;
+  running?: boolean;
+  shared?: boolean;
+}) {
   const missing = game.status === "missing";
   const tilt = useRef<HTMLDivElement>(null);
 
@@ -37,7 +46,7 @@ export function GameCard({ game, running }: { game: Game; running?: boolean }) {
       draggable={false}
     >
       <motion.div
-        layoutId={`cover-${game.id}`}
+        layoutId={shared ? `cover-${game.id}` : undefined}
         transition={{ type: "spring", stiffness: 260, damping: 30 }}
         className="relative [perspective:700px]"
       >

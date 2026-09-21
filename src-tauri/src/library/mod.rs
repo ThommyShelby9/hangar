@@ -3,7 +3,9 @@
 
 pub mod exe_info;
 pub mod folders;
+pub mod manage;
 pub mod names;
+pub mod shortcut;
 
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
@@ -28,6 +30,8 @@ pub struct Game {
     pub last_played_at: Option<i64>,
     /// Total recorded play time.
     pub playtime_secs: i64,
+    /// Ids of the collections this game belongs to.
+    pub collections: Vec<i64>,
     /// kind ('grid', 'hero', 'logo', 'icon') → file relative to the cache folder.
     pub images: HashMap<String, String>,
 }
@@ -67,7 +71,10 @@ pub struct PlatformGame {
 pub struct NewManualGame {
     pub dir: String,
     pub title: String,
+    /// Executable, or a URI (`steam://…`) for games added from a `.url` shortcut.
     pub exe: String,
+    #[serde(default)]
+    pub args: String,
     #[serde(default)]
     pub extras: Vec<folders::ExtraAction>,
 }
@@ -91,6 +98,7 @@ fn game_from_row(row: &rusqlite::Row) -> rusqlite::Result<Game> {
         added_at: row.get(9)?,
         last_played_at: row.get(10)?,
         playtime_secs: row.get(11)?,
+        collections: Vec::new(),
         images: HashMap::new(),
     })
 }
@@ -106,8 +114,15 @@ pub fn list_games(conn: &Connection) -> rusqlite::Result<Vec<Game>> {
         let (id, kind, file) = row?;
         images.entry(id).or_default().insert(kind, file);
     }
+    let mut collections: HashMap<i64, Vec<i64>> = HashMap::new();
+    let mut stmt = conn.prepare("SELECT game_id, collection_id FROM collection_games")?;
+    for row in stmt.query_map([], |r| Ok((r.get::<_, i64>(0)?, r.get(1)?)))? {
+        let (game, collection) = row?;
+        collections.entry(game).or_default().push(collection);
+    }
     for game in &mut games {
         game.images = images.remove(&game.id).unwrap_or_default();
+        game.collections = collections.remove(&game.id).unwrap_or_default();
     }
     Ok(games)
 }
@@ -122,6 +137,10 @@ pub fn get_game(conn: &Connection, id: i64) -> rusqlite::Result<Option<GameDetai
     let mut stmt = conn.prepare("SELECT kind, file FROM game_images WHERE game_id = ?1")?;
     game.images = stmt
         .query_map([id], |r| Ok((r.get(0)?, r.get(1)?)))?
+        .collect::<Result<_, _>>()?;
+    game.collections = conn
+        .prepare("SELECT collection_id FROM collection_games WHERE game_id = ?1")?
+        .query_map([id], |r| r.get(0))?
         .collect::<Result<_, _>>()?;
     Ok(Some(GameDetail { game, actions: list_actions(conn, id)? }))
 }
@@ -170,15 +189,21 @@ pub fn manual_key(dir: &str) -> String {
 }
 
 pub fn add_manual_game(conn: &mut Connection, game: &NewManualGame) -> rusqlite::Result<i64> {
+    // A `.url` shortcut (steam://…) has no folder: the link itself identifies the game.
+    let is_uri = game.exe.contains("://");
+    let (key, install_dir) = if is_uri { (game.exe.to_lowercase(), None) } else { (manual_key(&game.dir), Some(&game.dir)) };
     let tx = conn.transaction()?;
     tx.execute(
         "INSERT INTO games (title, sort_title, source, source_id, install_dir, added_at)
          VALUES (?1, ?2, 'manual', ?3, ?4, ?5)",
-        params![game.title, names::sort_title(&game.title), manual_key(&game.dir), game.dir, db::now()],
+        params![game.title, names::sort_title(&game.title), key, install_dir, db::now()],
     )?;
     let id = tx.last_insert_rowid();
-    let exe_dir = Path::new(&game.exe).parent().map(|p| p.display().to_string());
+    let exe_dir = (!is_uri).then(|| Path::new(&game.exe).parent().map(|p| p.display().to_string())).flatten();
     insert_action(&tx, id, "Jouer", &game.exe, exe_dir.as_deref(), true, 0)?;
+    if !game.args.is_empty() {
+        tx.execute("UPDATE launch_actions SET args = ?2 WHERE game_id = ?1", params![id, game.args])?;
+    }
     for (i, extra) in game.extras.iter().enumerate() {
         let dir = Path::new(&extra.path).parent().map(|p| p.display().to_string());
         insert_action(&tx, id, &extra.name, &extra.path, dir.as_deref(), false, i as i64 + 1)?;
@@ -392,6 +417,7 @@ mod tests {
                 dir: r"N:\Limbo".into(),
                 title: "Limbo".into(),
                 exe: r"N:\Limbo\limbo.exe".into(),
+                args: String::new(),
                 extras: vec![folders::ExtraAction { name: "Configuration".into(), path: r"N:\Limbo\cfg.exe".into() }],
             },
         )

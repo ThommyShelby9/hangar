@@ -167,8 +167,15 @@ function GameView({ game }: { game: GameDetail }) {
       {missing && (
         <p className="mx-10 mt-2 flex items-center gap-2 rounded-control border border-flare/40 bg-flare/10 px-4 py-3 text-flare">
           <TriangleAlert size={16} />
-          Hangar ne trouve plus ce jeu. Le disque est peut-être débranché ou le dossier a été
-          déplacé.
+          <span className="flex-1">
+            Hangar ne trouve plus ce jeu. Le disque est peut-être débranché ou le dossier a été
+            déplacé.
+          </span>
+          {game.source === "manual" && game.installDir && (
+            <Button size="sm" variant="danger" onClick={() => setDialog("edit")}>
+              Retrouver le jeu
+            </Button>
+          )}
         </p>
       )}
 

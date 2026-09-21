@@ -115,6 +115,22 @@ pub async fn scan_platforms(app: AppHandle) -> CmdResult<usize> {
     Ok(added)
 }
 
+/// Emitted at start-up with the number of new games waiting in the watched folders.
+pub const NEW_GAMES_FOUND: &str = "new-games-found";
+
+/// Start-up check of the watched folders: the library offers the new games, nothing is added silently.
+pub async fn announce_new_games(app: AppHandle) {
+    let handle = app.clone();
+    let found = tauri::async_runtime::spawn_blocking(move || with_db(&handle, |c| library::scan_watched_folders(c)))
+        .await;
+    if let Ok(Ok(candidates)) = found {
+        let count = candidates.iter().filter(|c| c.kind == "game").count();
+        if count > 0 {
+            let _ = app.emit(NEW_GAMES_FOUND, count);
+        }
+    }
+}
+
 /// Game folders found in the watched folders that aren't in the library yet.
 #[tauri::command]
 pub async fn scan_folders(app: AppHandle) -> CmdResult<Vec<folders::FolderCandidate>> {
@@ -133,10 +149,13 @@ pub async fn analyze_paths(paths: Vec<String>) -> CmdResult<Vec<folders::FolderC
             .filter_map(|p| {
                 if p.is_dir() {
                     folders::analyze(&p)
-                } else if p.extension().is_some_and(|e| e.eq_ignore_ascii_case("exe")) {
-                    Some(candidate_for_exe(&p))
                 } else {
-                    None
+                    match p.extension().map(|e| e.to_string_lossy().to_lowercase()).as_deref() {
+                        Some("exe") => Some(candidate_for_exe(&p, String::new())),
+                        Some("lnk") => candidate_for_shortcut(&p, library::shortcut::read_lnk(&p)?),
+                        Some("url") => candidate_for_shortcut(&p, library::shortcut::read_url_file(&p)?),
+                        _ => None,
+                    }
                 }
             })
             .collect()
@@ -146,7 +165,7 @@ pub async fn analyze_paths(paths: Vec<String>) -> CmdResult<Vec<folders::FolderC
 }
 
 /// A dropped exe: the game folder is its parent, above any Unreal-style `Binaries\Win64`.
-fn candidate_for_exe(exe: &Path) -> folders::FolderCandidate {
+fn candidate_for_exe(exe: &Path, args: String) -> folders::FolderCandidate {
     let mut dir = exe.parent().unwrap_or(exe).to_path_buf();
     while dir
         .file_name()
@@ -173,6 +192,25 @@ fn candidate_for_exe(exe: &Path) -> folders::FolderCandidate {
             product_name: product,
         }],
         extras: vec![],
+        args,
+    }
+}
+
+/// A dropped shortcut: `.lnk` to an exe behaves like the exe itself; `.url` to `steam://…` keeps the link.
+fn candidate_for_shortcut(link: &Path, target: library::shortcut::Target) -> Option<folders::FolderCandidate> {
+    match target {
+        library::shortcut::Target::Exe { path, args } => {
+            let is_exe = path.extension().is_some_and(|e| e.eq_ignore_ascii_case("exe"));
+            (is_exe && path.exists()).then(|| candidate_for_exe(&path, args))
+        }
+        library::shortcut::Target::Uri(uri) => Some(folders::FolderCandidate {
+            dir: String::new(),
+            title: library::manage::title_from_shortcut(link),
+            kind: "game",
+            exes: vec![folders::ExeCandidate { path: uri, size: 0, product_name: None }],
+            extras: vec![],
+            args: String::new(),
+        }),
     }
 }
 
@@ -190,6 +228,112 @@ pub fn import_games(app: AppHandle, games: Vec<NewManualGame>) -> CmdResult<Vec<
 #[tauri::command]
 pub fn ignore_folders(app: AppHandle, dirs: Vec<String>) -> CmdResult<()> {
     with_db(&app, |c| dirs.iter().try_for_each(|d| library::ignore_path(c, d)))
+}
+
+// ── Managing a game ─────────────────────────────────────────────────────────
+
+#[tauri::command]
+pub fn relocate_game(app: AppHandle, id: i64, dir: String) -> CmdResult<()> {
+    let state = app.state::<AppState>();
+    let mut conn = state.db.lock().map_err(err)?;
+    library::manage::relocate(&mut conn, id, &dir)?;
+    drop(conn);
+    changed(&app);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn uninstall_info(app: AppHandle, id: i64) -> CmdResult<library::manage::UninstallInfo> {
+    with_db(&app, |c| library::manage::uninstall_info(c, id))
+}
+
+/// `uninstaller`: runs the game's own uninstaller (the game stays listed; it turns "missing" once gone).
+/// `recycle`: sends the whole folder to the Recycle Bin and removes the game from the library.
+#[tauri::command]
+pub async fn uninstall_game(app: AppHandle, id: i64, mode: String) -> CmdResult<()> {
+    let info = with_db(&app, |c| library::manage::uninstall_info(c, id))?;
+    match mode.as_str() {
+        "uninstaller" => {
+            let exe = info.uninstaller.ok_or("Ce jeu n'a pas de désinstalleur.")?;
+            let dir = Path::new(&exe).parent().map(|p| p.display().to_string());
+            launcher::launch(&LaunchAction {
+                id: 0,
+                name: "Désinstaller".into(),
+                target: exe,
+                args: String::new(),
+                working_dir: dir,
+                run_as_admin: false,
+                is_default: false,
+            })
+        }
+        "recycle" => {
+            let dir = PathBuf::from(info.install_dir.ok_or("Ce jeu n'a pas de dossier.")?);
+            if dir.parent().is_none() {
+                return Err("Refusé : ce dossier est la racine d'un disque.".into());
+            }
+            tauri::async_runtime::spawn_blocking(move || library::manage::recycle(&dir)).await.map_err(err)??;
+            remove_game(app, id)
+        }
+        _ => Err("Mode de désinstallation inconnu".into()),
+    }
+}
+
+#[tauri::command]
+pub fn set_game_image_file(app: AppHandle, id: i64, kind: sgdb::ArtKind, path: String) -> CmdResult<()> {
+    let cache = app.state::<AppState>().paths.cache.clone();
+    let file = library::manage::copy_custom_image(&cache, id, kind.as_str(), Path::new(&path))?;
+    with_db(&app, |c| library::set_image(c, id, kind.as_str(), &file, "custom"))?;
+    changed(&app);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn add_action(app: AppHandle, game_id: i64, name: String, target: String, args: String) -> CmdResult<i64> {
+    let id = with_db(&app, |c| library::manage::add_action(c, game_id, name.trim(), &target, &args))?;
+    changed(&app);
+    Ok(id)
+}
+
+#[tauri::command]
+pub fn remove_action(app: AppHandle, id: i64) -> CmdResult<()> {
+    with_db(&app, |c| library::manage::remove_action(c, id))?;
+    changed(&app);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn set_default_action(app: AppHandle, id: i64) -> CmdResult<()> {
+    with_db(&app, |c| library::manage::set_default_action(c, id))?;
+    changed(&app);
+    Ok(())
+}
+
+// ── Collections ─────────────────────────────────────────────────────────────
+
+#[tauri::command]
+pub fn list_collections(app: AppHandle) -> CmdResult<Vec<library::manage::Collection>> {
+    with_db(&app, |c| library::manage::list_collections(c))
+}
+
+#[tauri::command]
+pub fn create_collection(app: AppHandle, name: String) -> CmdResult<i64> {
+    let state = app.state::<AppState>();
+    let conn = state.db.lock().map_err(err)?;
+    library::manage::create_collection(&conn, &name)
+}
+
+#[tauri::command]
+pub fn delete_collection(app: AppHandle, id: i64) -> CmdResult<()> {
+    with_db(&app, |c| library::manage::delete_collection(c, id))?;
+    changed(&app);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn set_game_collections(app: AppHandle, id: i64, collections: Vec<i64>) -> CmdResult<()> {
+    with_db(&app, |c| library::manage::set_game_collections(c, id, &collections))?;
+    changed(&app);
+    Ok(())
 }
 
 // ── Play time ───────────────────────────────────────────────────────────────
