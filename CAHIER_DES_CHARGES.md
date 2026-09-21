@@ -233,10 +233,11 @@ Chaque phase contient : **objectif**, **fonctionnalités** (cases à cocher), **
 
 #### 1.2 Ajout manuel
 - [x] **Glisser-déposer** d'un `.exe` ou d'un dossier dans la fenêtre
-- [ ] Glisser-déposer d'un raccourci `.lnk` / `.url`
+- [x] Glisser-déposer (ou bouton « Ajouter un jeu ») d'un raccourci `.lnk` (exe + arguments) ou `.url` (lien `steam://…` gardé tel quel)
 - [x] Bouton **« Ajouter un jeu »** avec sélecteur de fichier
 - [x] **Dossiers surveillés** (par défaut `H:\Games` et `N:\`) : analyse de chaque sous-dossier, propositions à valider (bouton « Chercher des jeux »)
-- [ ] Détection automatique des nouveaux jeux ajoutés plus tard (crate `notify`)
+- [x] Nouveaux jeux signalés au démarrage (bandeau « N nouveaux jeux dans tes dossiers ») — rien n'est ajouté sans confirmation
+- [ ] Détection en direct pendant que Hangar est ouvert (crate `notify`)
 - [x] Détection du bon exe dans un dossier :
   - écarter : désinstalleurs (`unins*.exe`, `uninstall*`), `UnityCrashHandler*`, `CrashReport*`, redistribuables (`vcredist*`, `DXSETUP`, `dotnet*`, `UE4PrereqSetup*`), outils de mise à jour, `*setup*` ;
   - classer le reste : ressemblance avec le nom du dossier, taille, présence d'infos de version ;
@@ -263,12 +264,13 @@ Chaque phase contient : **objectif**, **fonctionnalités** (cases à cocher), **
 - [x] Repli si rien ne correspond : tuile générée avec le titre
 - [ ] Repli : **icône extraite de l'exe**
 - [x] Modification de la fiche : titre, jaquette, fond, logo, icône (choix dans SteamGridDB)
-- [ ] Modification : description, **images perso**
+- [x] Modification : **images perso** (fichier du PC, pour chaque type d'image)
+- [ ] Modification : description (IGDB)
 - [x] Images téléchargées une fois et mises en cache dans `data\cache\` (servies par le protocole `hangar://`)
 
 #### 1.5 Lancement
 - [x] **Plusieurs actions de lancement** par jeu (« Jouer » + « Launcher » / « Configuration » détectés automatiquement), une par défaut
-- [ ] Ajouter / supprimer des actions à la main (« Mods »…)
+- [x] Ajouter / supprimer des actions à la main (« Mods »…), choisir celle du bouton Jouer
 - [x] Options : arguments, exécution en administrateur (dossier de travail = dossier de l'exe)
 - [ ] Scripts **avant** et **après** le jeu
 - [ ] Émulateurs : jeu = ROM + modèle de commande de l'émulateur (ex. `retroarch.exe -L <core> "{rom}"`)
@@ -279,12 +281,13 @@ Chaque phase contient : **objectif**, **fonctionnalités** (cases à cocher), **
 - [x] **Fiche du jeu** : fond héro, logo, bouton Jouer, actions de lancement, infos
 - [x] Recherche instantanée tolérante aux fautes (`fuse.js`)
 - [x] Filtre favoris
-- [ ] Filtres provenance / installé-introuvable ; tris : nom, dernier lancement, date d'ajout
+- [x] Filtre « Introuvables » (affiché s'il y en a) ; tris : nom, dernière partie, temps de jeu, date d'ajout
+- [ ] Filtre par provenance (utile quand Steam / Epic seront présents)
 - [x] Favoris
-- [ ] Collections, tags, « récemment joués »
-- [ ] **Relocaliser** un jeu introuvable (disque externe, lettre de lecteur changée)
+- [x] Collections (créées depuis « Modifier le jeu », filtre dans la bibliothèque) et rangée « Joués récemment »
+- [x] **Relocaliser** un jeu introuvable (bouton « Retrouver le jeu ») : actions, temps de jeu et images conservés
 - [x] Retirer un jeu de la bibliothèque (les fichiers restent sur le disque)
-- [ ] **Désinstaller** : lance le désinstalleur s'il existe, sinon supprime le dossier après double confirmation
+- [x] **Désinstaller** : lance le désinstalleur du jeu s'il existe, sinon envoie le dossier **à la corbeille** (récupérable) après confirmation
 
 **Critères de fin**
 - Mes jeux Steam, Epic et mes jeux téléchargés apparaissent avec jaquette et fond.
