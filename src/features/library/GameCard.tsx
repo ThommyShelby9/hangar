@@ -30,7 +30,7 @@ export function GameCard({ game, running }: { game: Game; running?: boolean }) {
         )}
         {running && (
           <span className="absolute bottom-2.5 left-2.5 flex items-center gap-1.5 rounded-full bg-tarmac/85 px-2.5 py-1 text-caption text-primer backdrop-blur">
-            <span className="size-1.5 animate-pulse rounded-full bg-primer" />
+            <span className="size-1.5 rounded-full bg-primer" />
             En cours
           </span>
         )}

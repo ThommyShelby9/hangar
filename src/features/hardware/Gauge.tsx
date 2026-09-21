@@ -75,7 +75,7 @@ export function Gauge({
         {clamped > 0.5 && !dimmed && (
           <path
             d={arc(c, c, r, START, end)}
-            className="stroke-signal transition-[d] duration-500"
+            className="stroke-signal"
             strokeWidth="6"
             fill="none"
             strokeLinecap="round"

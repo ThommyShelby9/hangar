@@ -20,7 +20,8 @@ const pickSeries = (s: HardwareSnapshot) => ({
 
 export function HardwarePage() {
   const { data: info } = useHardwareInfo();
-  const { data: snap } = useHardwareSnapshot(1000);
+  // Every 2 s: the CPU sensor writes at that pace, and each refresh repaints the whole page.
+  const { data: snap } = useHardwareSnapshot(2000);
   const history = useHistory(snap, pickSeries);
 
   return (

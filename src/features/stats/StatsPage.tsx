@@ -127,7 +127,7 @@ export function StatsPage() {
                       <td className="py-2.5 text-right tabular-nums">
                         {s.running ? (
                           <span className="inline-flex items-center gap-2 text-primer">
-                            <span className="size-2 animate-pulse rounded-full bg-primer" />
+                            <span className="size-2 rounded-full bg-primer" />
                             En cours · {formatDuration(s.durationSecs)}
                           </span>
                         ) : (

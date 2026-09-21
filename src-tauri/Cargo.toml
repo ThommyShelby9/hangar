@@ -30,6 +30,9 @@ nvml-wrapper = "0.13"
 [target.'cfg(windows)'.dependencies]
 winreg = "0.56"
 windows = { version = "0.62", features = ["Win32_Graphics_Dxgi", "Win32_Foundation"] }
+# Same versions as Tauri's WebView2 bindings, to tune the webview (see webview_memory.rs).
+webview2-com = "0.38"
+windows-core-webview = { package = "windows-core", version = "0.61" }
 windows-sys = { version = "0.61", features = [
     "Win32_Foundation",
     "Win32_Storage_FileSystem",

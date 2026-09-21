@@ -3,7 +3,7 @@ import { useHardwareSnapshot } from "@/features/hardware/queries";
 
 /** Compact live readout at the bottom of the navigation: CPU, busiest GPU, memory. */
 export function SidebarMonitor() {
-  const { data: snap } = useHardwareSnapshot(3000);
+  const { data: snap } = useHardwareSnapshot(5000);
   if (!snap) return null;
 
   const gpu = snap.gpus.reduce<(typeof snap.gpus)[number] | null>(
@@ -38,7 +38,7 @@ export function SidebarMonitor() {
           <span className="text-alu-dim">{row.label}</span>
           <span className="h-1 rounded-full bg-rivet">
             <span
-              className="block h-full rounded-full bg-signal transition-[width] duration-700"
+              className="block h-full rounded-full bg-signal"
               style={{ width: `${Math.min(100, row.value)}%` }}
             />
           </span>

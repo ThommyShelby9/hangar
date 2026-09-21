@@ -7,6 +7,7 @@ mod metadata;
 mod paths;
 mod scanners;
 mod tracker;
+mod webview_memory;
 
 use std::path::{Component, Path};
 use std::collections::HashSet;
@@ -53,7 +54,7 @@ pub fn run() {
         .setup(move |app| {
             // Created here rather than in tauri.conf.json so the WebView2 profile
             // lives in data\webview instead of %LOCALAPPDATA%.
-            WebviewWindowBuilder::new(app, "main", WebviewUrl::default())
+            let window = WebviewWindowBuilder::new(app, "main", WebviewUrl::default())
                 .title("Hangar")
                 .inner_size(1280.0, 800.0)
                 .min_inner_size(960.0, 600.0)
@@ -67,6 +68,7 @@ pub fn run() {
                 })
                 .data_directory(webview_dir)
                 .build()?;
+            webview_memory::install(&window);
 
             tracker::spawn(app.handle().clone());
 

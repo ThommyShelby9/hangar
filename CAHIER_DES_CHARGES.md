@@ -370,9 +370,24 @@ Le pilote PawnIO n'accepte que les administrateurs (`D:P(A;;GA;;;SY)(A;;GA;;;BA)
 #### Mesures (21/09/2026)
 - `hangar-sensors` : 0 % CPU, 4 Mo.
 - Hangar : 0,4 % CPU, 73 Mo ; WebView2 : ~3,7 % CPU et ~520 Mo sur 6 processus.
-- [ ] **< 2 % de CPU page Matériel ouverte : non atteint** → alléger le rendu (animations des jauges, rafraîchissements).
-- [ ] **< 150 Mo de RAM au repos : non atteignable avec WebView2** (plusieurs centaines de Mo à lui seul) → objectif à redéfinir.
+- [x] **< 2 % de CPU page Matériel ouverte : atteint après optimisation** (voir ci-dessous).
+- [x] RAM : objectif de 150 Mo abandonné (WebView2 pèse à lui seul plusieurs centaines de Mo) ; nouvel objectif **< 500 Mo fenêtre ouverte, < 400 Mo réduite** : atteint.
 - [ ] Comparaison des valeurs avec le Gestionnaire des tâches (±5 %) : à faire.
+
+#### Optimisation (21/09/2026)
+Mesures sur une copie de test pilotée par le port de débogage WebView2 (Hangar + processus WebView2, 20 s par page) :
+
+| Page | Avant | Après |
+|---|---|---|
+| Bibliothèque | 1,00 % CPU | 0,16 % CPU |
+| Matériel | 3,33 % CPU | 0,37 % CPU |
+| Stats | 0,87 % CPU | 0,21 % CPU |
+
+- Jauges : plus d'animation de l'arc à chaque relevé (redessin continu à 60 i/s) ; mini-moniteur sans animation.
+- Page Matériel rafraîchie toutes les 2 s (rythme du capteur), mini-moniteur toutes les 5 s.
+- Pastilles « En cours » fixes : l'animation `pulse` infinie redessinait l'écran **pendant les parties**.
+- Fenêtre réduite → WebView2 passe en mémoire réduite (`SetMemoryUsageTargetLevel`) : 429 → 369 Mo.
+- Rendu logiciel (`--disable-gpu`) testé et écarté : −15 à −30 Mo seulement, au prix des animations futures.
 
 **Critères de fin**
 - Les valeurs affichées correspondent à celles du Gestionnaire des tâches (±5 %).

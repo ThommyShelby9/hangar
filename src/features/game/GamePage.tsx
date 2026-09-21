@@ -94,7 +94,7 @@ function GameView({ game }: { game: GameDetail }) {
             >
               {running ? (
                 <>
-                  <span className="size-2.5 animate-pulse rounded-full bg-current" />
+                  <span className="size-2.5 rounded-full bg-current" />
                   En cours
                 </>
               ) : (
