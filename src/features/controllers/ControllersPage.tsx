@@ -59,7 +59,7 @@ export function ControllersPage() {
                       p.id === pad.id ? "bg-rivet/60 text-alu" : "text-alu-dim hover:bg-rivet/30",
                     )}
                   >
-                    {KIND_LABEL[p.kind]}
+                    {padLabel(p)}
                   </button>
                 ))}
               </div>
@@ -267,4 +267,11 @@ function Block({ title, children }: { title: string; children: ReactNode }) {
       {children}
     </section>
   );
+}
+
+/** "DualShock 4 · USB · 5 %": two identical controllers stay tell-apart-able. */
+function padLabel(pad: PadInfo) {
+  const connection = { usb: "USB", bluetooth: "Bluetooth", unknown: null }[pad.connection];
+  const battery = pad.battery?.percent != null ? `${pad.battery.percent} %` : null;
+  return [KIND_LABEL[pad.kind], connection, battery].filter(Boolean).join(" · ");
 }
