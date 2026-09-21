@@ -162,3 +162,66 @@ export const statsApi = {
   gameStats: (id: number) => invoke<GameStats>("game_stats", { id }),
   overview: (days: number | null) => invoke<StatsOverview>("stats_overview", { days }),
 };
+
+export interface HardwareInfo {
+  cpuName: string;
+  physicalCores: number | null;
+  logicalCores: number;
+  memoryTotal: number;
+  os: string | null;
+  motherboard: string | null;
+  gpus: { name: string; vendor: string; dedicatedMemory: number }[];
+  disks: {
+    mount: string;
+    name: string;
+    kind: "ssd" | "hdd" | "other";
+    total: number;
+    available: number;
+  }[];
+}
+
+export type SensorStatus =
+  | { state: "noDriver" }
+  | { state: "off" }
+  | { state: "running" }
+  | { state: "error"; message: string };
+
+export interface GpuReading {
+  name: string;
+  vendor: string;
+  usage: number | null;
+  topProcess: string | null;
+  temperatureC: number | null;
+  memoryUsed: number | null;
+  memoryTotal: number | null;
+  clockMhz: number | null;
+  powerW: number | null;
+  asleep: boolean;
+}
+
+export interface HardwareSnapshot {
+  cpu: {
+    usage: number;
+    perCore: number[];
+    frequencyMhz: number;
+    packageC: number | null;
+    coresC: (number | null)[];
+    powerW: number | null;
+    sensor: SensorStatus;
+  };
+  memoryUsed: number;
+  memoryTotal: number;
+  gpus: GpuReading[];
+  diskReadBps: number | null;
+  diskWriteBps: number | null;
+  netRxBps: number;
+  netTxBps: number;
+  battery: { percent: number; pluggedIn: boolean } | null;
+  systemTempC: number | null;
+}
+
+export const hardwareApi = {
+  info: () => invoke<HardwareInfo>("hardware_info"),
+  snapshot: () => invoke<HardwareSnapshot>("hardware_snapshot"),
+  enableCpuSensors: () => invoke<void>("enable_cpu_sensors"),
+};

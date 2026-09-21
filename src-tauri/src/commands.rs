@@ -5,7 +5,7 @@ use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::library::{self, folders, names, GamePatch, LaunchAction, NewManualGame};
 use crate::metadata::{self, sgdb};
-use crate::{db, launcher, paths, scanners, tracker, AppState};
+use crate::{db, hardware, launcher, paths, scanners, tracker, AppState};
 
 /// Emitted whenever games, images or statuses change; the UI refetches the library.
 pub const LIBRARY_CHANGED: &str = "library-changed";
@@ -209,6 +209,50 @@ pub fn game_stats(app: AppHandle, id: i64) -> CmdResult<tracker::stats::GameStat
 pub fn stats_overview(app: AppHandle, days: Option<i64>) -> CmdResult<tracker::stats::Overview> {
     let since = days.map_or(0, |d| db::now() - d * 86_400);
     with_db(&app, |c| tracker::stats::overview(c, since))
+}
+
+// ── Hardware ────────────────────────────────────────────────────────────────
+
+fn with_monitor<T>(state: &AppState, f: impl FnOnce(&mut hardware::Monitor) -> T) -> CmdResult<T> {
+    let mut monitor = state.monitor.lock().map_err(err)?;
+    let monitor = monitor.get_or_insert_with(|| hardware::Monitor::new(&state.paths.data));
+    Ok(f(monitor))
+}
+
+#[tauri::command]
+pub async fn hardware_info(app: AppHandle) -> CmdResult<hardware::HardwareInfo> {
+    tauri::async_runtime::spawn_blocking(move || with_monitor(&app.state::<AppState>(), |m| m.info()))
+        .await
+        .map_err(err)?
+}
+
+#[tauri::command]
+pub async fn hardware_snapshot(app: AppHandle) -> CmdResult<hardware::Snapshot> {
+    tauri::async_runtime::spawn_blocking(move || with_monitor(&app.state::<AppState>(), |m| m.snapshot()))
+        .await
+        .map_err(err)?
+}
+
+/// Starts `hangar-sensors.exe --install` as administrator (one UAC prompt): it creates the logon
+/// task that keeps the CPU temperature sensor running.
+#[tauri::command]
+pub fn enable_cpu_sensors(state: State<'_, AppState>) -> CmdResult<()> {
+    let exe = state.paths.root.join("hangar-sensors.exe");
+    if !exe.exists() {
+        return Err(format!("{} est introuvable : recopie Hangar avec « npm run build:portable ».", exe.display()));
+    }
+    if !Path::new(hardware::PAWNIO_LIB).exists() {
+        return Err("Le pilote PawnIO n'est pas installé.".into());
+    }
+    launcher::launch(&LaunchAction {
+        id: 0,
+        name: "Capteurs".into(),
+        target: exe.display().to_string(),
+        args: "--install".into(),
+        working_dir: Some(state.paths.root.display().to_string()),
+        run_as_admin: true,
+        is_default: false,
+    })
 }
 
 // ── Watched folders ─────────────────────────────────────────────────────────

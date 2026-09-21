@@ -11,7 +11,8 @@
     "lint": "eslint .",
     "format": "prettier --write src",
     "typecheck": "tsc --noEmit",
-    "build:portable": "tauri build && node scripts/deploy-portable.mjs"
+    "build:portable": "tauri build && cargo build --release --manifest-path sensors/Cargo.toml && node scripts/deploy-portable.mjs",
+    "deploy": "node scripts/deploy-portable.mjs"
   },
   "dependencies": {
     "@fontsource-variable/archivo": "^5.3.0",

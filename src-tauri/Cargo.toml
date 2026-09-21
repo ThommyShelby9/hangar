@@ -24,13 +24,17 @@ regex = "1"
 reqwest = { version = "0.13", features = ["json"] }
 urlencoding = "2"
 tauri-plugin-dialog = "2"
-sysinfo = { version = "0.39", default-features = false, features = ["system"] }
+sysinfo = { version = "0.39", default-features = false, features = ["system", "disk", "network"] }
+nvml-wrapper = "0.13"
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.56"
+windows = { version = "0.62", features = ["Win32_Graphics_Dxgi", "Win32_Foundation"] }
 windows-sys = { version = "0.61", features = [
     "Win32_Foundation",
     "Win32_Storage_FileSystem",
+    "Win32_System_Performance",
+    "Win32_System_Power",
     "Win32_UI_Shell",
     "Win32_UI_WindowsAndMessaging",
 ] }

@@ -2,6 +2,7 @@ import { NavLink } from "react-router";
 import { motion } from "motion/react";
 import { Activity, Cpu, Gamepad2, LayoutGrid, Settings, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SidebarMonitor } from "@/components/SidebarMonitor";
 
 interface NavItem {
   to: string;
@@ -29,6 +30,7 @@ export function Sidebar() {
         ))}
       </ul>
       <div className="mt-auto">
+        <SidebarMonitor />
         <SidebarLink item={SETTINGS_NAV} />
       </div>
     </nav>

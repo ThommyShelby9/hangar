@@ -1,5 +1,6 @@
 mod commands;
 mod db;
+mod hardware;
 mod launcher;
 mod library;
 mod metadata;
@@ -26,6 +27,8 @@ pub struct AppState {
     pub artwork_running: AtomicBool,
     /// Games currently running, maintained by the tracker.
     pub running: Mutex<HashSet<i64>>,
+    /// Created on first use: the hardware page may never be opened.
+    pub monitor: Mutex<Option<hardware::Monitor>>,
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -100,6 +103,9 @@ pub fn run() {
             commands::running_games,
             commands::game_stats,
             commands::stats_overview,
+            commands::hardware_info,
+            commands::hardware_snapshot,
+            commands::enable_cpu_sensors,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -116,6 +122,7 @@ fn init_state() -> Result<AppState, String> {
         db: Mutex::new(conn),
         artwork_running: AtomicBool::new(false),
         running: Mutex::new(HashSet::new()),
+        monitor: Mutex::new(None),
     })
 }
 

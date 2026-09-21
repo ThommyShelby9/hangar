@@ -40,3 +40,21 @@ export function dayKey(date: Date) {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
+
+const units = ["o", "Ko", "Mo", "Go", "To"];
+
+/** 13766422528 → "12,8 Go". */
+export function formatBytes(bytes: number, digits = 1): string {
+  let value = bytes;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit++;
+  }
+  return `${value.toLocaleString("fr-FR", { maximumFractionDigits: unit < 2 ? 0 : digits })} ${units[unit]}`;
+}
+
+/** Throughput: "4,2 Mo/s". */
+export function formatRate(bytesPerSec: number): string {
+  return `${formatBytes(bytesPerSec)}/s`;
+}
