@@ -449,9 +449,11 @@ Nécessite le pilote **DsHidMini** (et **BthPS3** pour le Bluetooth), installés
 - [x] **Palette de commandes** Ctrl+K : jeux et pages, Entrée pour ouvrir, Maj+Entrée pour lancer
 
 #### 5.2 Mode Big Picture
-- [ ] Interface plein écran pensée pour la TV (grands éléments, lisible à distance)
-- [ ] **Navigation complète à la manette** (focus visible, sons de navigation optionnels)
-- [ ] **Icônes PlayStation** (✕ ○ □ △) partout
+- [x] **Mode TV** (bouton dans la barre de titre) : plein écran, grandes jaquettes en rangées (joués récemment, tous les jeux, collections), fond et logo du jeu sélectionné, heure
+- [x] **Navigation à la manette** (croix, stick gauche, répétition quand on maintient) et au clavier : ✕/Entrée pour jouer, △/F pour les favoris, ○/Échap pour quitter
+- [ ] Navigation manette dans le reste de l'appli (hors mode TV), sons de navigation
+- [x] **Icônes PlayStation** (✕ ○ △) dans le mode TV, même quand DS4Windows fait passer la DS4 pour une manette Xbox
+- [ ] Tester le mode TV avec la vraie DS4 (manette pas à portée le 21/09)
 - [ ] **Pavé tactile DS4 comme souris** (option)
 - [ ] Bouton PS → ouvre / ramène le launcher
 
