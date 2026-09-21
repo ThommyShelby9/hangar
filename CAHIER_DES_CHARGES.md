@@ -435,12 +435,13 @@ Nécessite le pilote **DsHidMini** (et **BthPS3** pour le Bluetooth), installés
 **Objectif** : l'appli devient vraiment belle, et utilisable entièrement à la manette sur une TV.
 
 #### 5.1 Finitions
-- [ ] **Couleurs dynamiques** tirées de la jaquette
-- [ ] Fond héro flouté, **trailer** en fond sur la fiche
-- [ ] Transitions partagées grille → fiche
-- [ ] Inclinaison 3D + reflet des cartes
-- [ ] Micro-interactions, états vides, écrans de chargement soignés
-- [ ] **Palette de commandes** Ctrl+K (rechercher un jeu, lancer, aller à une page)
+- [x] **Couleurs dynamiques** : couleur dominante de la jaquette (pixels pondérés par la saturation), halo sous le titre de la fiche
+- [x] Fond héro flouté (repli quand il n'y a pas d'image de fond)
+- [ ] **Trailer** en fond sur la fiche (demande une source de vidéos : IGDB ou Steam)
+- [x] Transition partagée grille → fiche : la jaquette « vole » jusqu'au bandeau de la fiche
+- [x] Inclinaison 3D + reflet qui suit la souris sur les jaquettes (désactivé si « réduire les animations »)
+- [ ] Micro-interactions, écrans de chargement soignés
+- [x] **Palette de commandes** Ctrl+K : jeux et pages, Entrée pour ouvrir, Maj+Entrée pour lancer
 
 #### 5.2 Mode Big Picture
 - [ ] Interface plein écran pensée pour la TV (grands éléments, lisible à distance)
@@ -450,7 +451,7 @@ Nécessite le pilote **DsHidMini** (et **BthPS3** pour le Bluetooth), installés
 - [ ] Bouton PS → ouvre / ramène le launcher
 
 #### 5.3 DS4 aux couleurs du jeu
-- [ ] Au lancement d'un jeu, la **barre lumineuse prend la couleur dominante de sa jaquette**
+- [ ] ~~Au lancement d'un jeu, la barre lumineuse prend la couleur dominante de sa jaquette~~ — **abandonné** : DS4Windows garde la main sur la barre lumineuse (choix du 21/09/2026)
 
 **Critères de fin**
 - Toute l'appli se parcourt et se lance à la manette, sans clavier ni souris.
