@@ -378,21 +378,28 @@ pub fn ignore_path(conn: &Connection, path: &str) -> rusqlite::Result<()> {
     Ok(())
 }
 
+/// What a folder scan needs from the database: read quickly, so the disks are scanned without
+/// holding the database (a scan of big drives takes seconds; the play-time tracker must not wait).
+pub struct ScanPlan {
+    roots: Vec<String>,
+    known: Vec<String>,
+}
+
+pub fn scan_plan(conn: &Connection) -> rusqlite::Result<ScanPlan> {
+    let known = conn
+        .prepare("SELECT source_id FROM games WHERE source = 'manual' UNION SELECT path FROM ignored_paths")?
+        .query_map([], |r| r.get(0))?
+        .collect::<Result<_, _>>()?;
+    Ok(ScanPlan { roots: watched_folders(conn)?, known })
+}
+
 /// Folder candidates from every watched folder, minus games already in the library and ignored folders.
-pub fn scan_watched_folders(conn: &Connection) -> rusqlite::Result<Vec<folders::FolderCandidate>> {
-    let known: Vec<String> = {
-        let mut stmt = conn.prepare(
-            "SELECT source_id FROM games WHERE source = 'manual' UNION SELECT path FROM ignored_paths",
-        )?;
-        let known = stmt.query_map([], |r| r.get(0))?.collect::<Result<_, _>>()?;
-        known
-    };
-    let roots = watched_folders(conn)?;
-    Ok(roots
+pub fn scan_watched_folders(plan: &ScanPlan) -> Vec<folders::FolderCandidate> {
+    plan.roots
         .iter()
         .flat_map(|root| folders::scan_root(Path::new(root)))
-        .filter(|c| !known.contains(&manual_key(&c.dir)))
-        .collect())
+        .filter(|c| !plan.known.contains(&manual_key(&c.dir)))
+        .collect()
 }
 
 #[cfg(test)]

@@ -119,10 +119,9 @@ pub const NEW_GAMES_FOUND: &str = "new-games-found";
 
 /// Start-up check of the watched folders: the library offers the new games, nothing is added silently.
 pub async fn announce_new_games(app: AppHandle) {
-    let handle = app.clone();
-    let found = tauri::async_runtime::spawn_blocking(move || with_db(&handle, |c| library::scan_watched_folders(c)))
-        .await;
-    if let Ok(Ok(candidates)) = found {
+    let Ok(plan) = with_db(&app, |c| library::scan_plan(c)) else { return };
+    let found = tauri::async_runtime::spawn_blocking(move || library::scan_watched_folders(&plan)).await;
+    if let Ok(candidates) = found {
         let count = candidates.iter().filter(|c| c.kind == "game").count();
         if count > 0 {
             let _ = app.emit(NEW_GAMES_FOUND, count);
@@ -133,9 +132,8 @@ pub async fn announce_new_games(app: AppHandle) {
 /// Game folders found in the watched folders that aren't in the library yet.
 #[tauri::command]
 pub async fn scan_folders(app: AppHandle) -> CmdResult<Vec<folders::FolderCandidate>> {
-    tauri::async_runtime::spawn_blocking(move || with_db(&app, |c| library::scan_watched_folders(c)))
-        .await
-        .map_err(err)?
+    let plan = with_db(&app, |c| library::scan_plan(c))?;
+    tauri::async_runtime::spawn_blocking(move || library::scan_watched_folders(&plan)).await.map_err(err)
 }
 
 /// Candidates for dropped / picked paths: executables or folders.
