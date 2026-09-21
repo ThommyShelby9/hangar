@@ -82,6 +82,9 @@ const MIGRATIONS: &[&str] = &[
     ALTER TABLE sessions ADD COLUMN max_gpu_temp REAL;
     ALTER TABLE sessions ADD COLUMN avg_cpu_load REAL;
     ALTER TABLE sessions ADD COLUMN load_samples INTEGER NOT NULL DEFAULT 0;",
+    // 6 — "last played" came from the Play button; it now follows recorded sessions only
+    "UPDATE games SET last_played_at =
+        (SELECT MAX(COALESCE(ended_at, last_seen_at)) FROM sessions WHERE sessions.game_id = games.id);",
 ];
 
 pub fn open(path: &Path) -> rusqlite::Result<Connection> {

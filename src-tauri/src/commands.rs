@@ -93,7 +93,6 @@ pub fn launch_game(app: AppHandle, id: i64, action_id: Option<i64>) -> CmdResult
     }
     .ok_or("Ce jeu n'a aucune action de lancement")?;
     launcher::launch(action)?;
-    with_db(&app, |c| library::mark_played(c, id))?;
     changed(&app);
     Ok(())
 }

@@ -165,7 +165,6 @@ fn open_session(conn: &Connection, game_id: i64, now: i64) -> rusqlite::Result<(
         "INSERT INTO sessions (game_id, started_at, last_seen_at) VALUES (?1, ?2, ?2)",
         params![game_id, now],
     )?;
-    conn.execute("UPDATE games SET last_played_at = ?2 WHERE id = ?1", params![game_id, now])?;
     Ok(())
 }
 
@@ -200,6 +199,11 @@ fn close_session(conn: &Connection, game_id: i64) -> rusqlite::Result<()> {
     conn.execute(
         "DELETE FROM sessions WHERE game_id = ?1 AND ended_at - started_at < ?2",
         params![game_id, MIN_SESSION_SECS],
+    )?;
+    // "Last played" only moves when a session was kept: a launch that failed or lasted seconds doesn't count.
+    conn.execute(
+        "UPDATE games SET last_played_at = (SELECT MAX(ended_at) FROM sessions WHERE game_id = ?1) WHERE id = ?1",
+        [game_id],
     )?;
     Ok(())
 }
@@ -310,6 +314,23 @@ mod tests {
             .collect::<Result<_, _>>()
             .unwrap();
         println!("exe appris : {learned:?}");
+    }
+
+    #[test]
+    fn last_played_follows_kept_sessions_only() {
+        let conn = conn_with_game();
+        let last_played = |c: &Connection| -> Option<i64> {
+            c.query_row("SELECT last_played_at FROM games WHERE id = 1", [], |r| r.get(0)).unwrap()
+        };
+        open_session(&conn, 1, 1_000).unwrap();
+        heartbeat(&conn, 1, 1_020).unwrap();
+        close_session(&conn, 1).unwrap();
+        assert_eq!(last_played(&conn), None, "20 s ne comptent pas comme une partie");
+
+        open_session(&conn, 1, 2_000).unwrap();
+        heartbeat(&conn, 1, 2_900).unwrap();
+        close_session(&conn, 1).unwrap();
+        assert_eq!(last_played(&conn), Some(2_900));
     }
 
     #[test]

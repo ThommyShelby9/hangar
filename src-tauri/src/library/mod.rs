@@ -316,11 +316,6 @@ pub fn remove_game(conn: &Connection, id: i64) -> rusqlite::Result<()> {
     Ok(())
 }
 
-pub fn mark_played(conn: &Connection, id: i64) -> rusqlite::Result<()> {
-    conn.execute("UPDATE games SET last_played_at = ?2 WHERE id = ?1", params![id, db::now()])?;
-    Ok(())
-}
-
 pub fn set_sgdb_id(conn: &Connection, id: i64, sgdb_id: i64) -> rusqlite::Result<()> {
     conn.execute("UPDATE games SET sgdb_id = ?2 WHERE id = ?1", params![id, sgdb_id])?;
     Ok(())
