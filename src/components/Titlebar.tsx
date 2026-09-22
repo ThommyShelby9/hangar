@@ -23,8 +23,9 @@ export function Titlebar() {
     <header data-tauri-drag-region className="flex h-10 shrink-0 items-center justify-between pl-5">
       <span
         data-tauri-drag-region
-        className="font-stencil text-[1.3rem] font-bold tracking-[0.08em] text-alu"
+        className="flex items-center gap-2 font-stencil text-[1.3rem] font-bold tracking-[0.08em] text-alu"
       >
+        <HangarMark />
         HANGAR
       </span>
 
@@ -83,5 +84,16 @@ function WindowButton({
     >
       {children}
     </button>
+  );
+}
+
+/** The app icon's hangar, without its tile: an amber arch, its open door and the apron. */
+function HangarMark() {
+  return (
+    <svg viewBox="160 240 704 400" aria-hidden className="pointer-events-none h-3.5 w-auto">
+      <path d="M176 606 A336 360 0 0 1 848 606 Z" className="fill-signal" />
+      <path d="M384 606 V434 Q384 414 404 414 H620 Q640 414 640 434 V606 Z" className="fill-tarmac" />
+      <rect x="160" y="606" width="704" height="28" rx="14" className="fill-alu" />
+    </svg>
   );
 }
