@@ -104,6 +104,9 @@ const MIGRATIONS: &[&str] = &[
     "ALTER TABLE games ADD COLUMN progress TEXT;   -- 'todo' | 'playing' | 'done' | 'completed' | 'dropped'
     ALTER TABLE games ADD COLUMN rating INTEGER;   -- 1 to 5
     ALTER TABLE games ADD COLUMN notes TEXT;",
+    // 10 — disk space
+    "ALTER TABLE games ADD COLUMN size_bytes INTEGER;
+    ALTER TABLE games ADD COLUMN size_checked_at INTEGER;",
 ];
 
 pub fn open(path: &Path) -> rusqlite::Result<Connection> {

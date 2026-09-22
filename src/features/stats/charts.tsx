@@ -205,9 +205,7 @@ function Streaks({ daily }: { daily: StatsOverview["daily"] }) {
       <span className="text-alu-dim">
         Record : <span className="tabular-nums">{plural(best)}</span>
       </span>
-      <span className="text-alu-dim">
-        {plural(days.length)} de jeu en un an
-      </span>
+      <span className="text-alu-dim">{plural(days.length)} de jeu en un an</span>
     </span>
   );
 }

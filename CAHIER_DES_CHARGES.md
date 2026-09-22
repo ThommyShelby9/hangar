@@ -503,6 +503,7 @@ Pour la DS3, DsHidMini (installé en phase 4) propose déjà son propre mode XIn
 - [x] **Série de jours de jeu** sous le calendrier (en cours, record)
 - [x] **« Je lance quoi ? »** : roulette de jaquettes qui favorise les jeux délaissés ou jamais lancés
 - [x] **Progression par jeu** (à commencer, en cours, terminé, 100 %, abandonné), note sur 5 et notes perso ; filtres dans la Bibliothèque
+- [x] **Place sur le disque** : taille de chaque jeu (mesurée en arrière-plan, chaque semaine), tri « Taille », répartition par disque et jeux délaissés qui prennent de la place (Stats)
 - [ ] **Alertes de temps de jeu** : limite quotidienne, rappel de pause
 
 #### Confort

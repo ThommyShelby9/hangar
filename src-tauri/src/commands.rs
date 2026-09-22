@@ -765,6 +765,24 @@ pub async fn set_game_image(app: AppHandle, id: i64, kind: sgdb::ArtKind, url: S
 }
 
 /// Fetches artwork for every game without a cover, one at a time, in the background.
+/// Measures game folders in the background, one at a time, and refreshes the library once done.
+pub fn spawn_size_scan(app: AppHandle) {
+    std::thread::Builder::new()
+        .name("hangar-sizes".into())
+        .spawn(move || {
+            let Ok(games) = with_db(&app, |c| library::sizes::stale(c)) else { return };
+            if games.is_empty() {
+                return;
+            }
+            for (id, dir) in games {
+                let bytes = library::sizes::folder_size(Path::new(&dir));
+                let _ = with_db(&app, |c| library::sizes::store(c, id, bytes));
+            }
+            changed(&app);
+        })
+        .expect("impossible de mesurer la taille des jeux");
+}
+
 pub fn spawn_artwork_fetch(app: AppHandle) {
     let state = app.state::<AppState>();
     if state.artwork_running.swap(true, Ordering::SeqCst) {

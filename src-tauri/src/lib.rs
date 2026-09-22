@@ -111,6 +111,7 @@ pub fn run() {
                     eprintln!("Hangar : scan des plateformes impossible : {e}");
                 }
                 commands::announce_new_games(handle.clone()).await;
+                commands::spawn_size_scan(handle.clone());
                 commands::look_up_pad_support(handle).await;
             });
             Ok(())

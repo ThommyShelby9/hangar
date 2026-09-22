@@ -6,6 +6,7 @@ pub mod folders;
 pub mod manage;
 pub mod names;
 pub mod shortcut;
+pub mod sizes;
 
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
@@ -34,6 +35,8 @@ pub struct Game {
     pub progress: Option<String>,
     /// 1 to 5 stars.
     pub rating: Option<i64>,
+    /// Space the game's folder takes, once measured.
+    pub size_bytes: Option<i64>,
     /// Ids of the collections this game belongs to.
     pub collections: Vec<i64>,
     /// kind ('grid', 'hero', 'logo', 'icon') → file relative to the cache folder.
@@ -87,7 +90,7 @@ pub struct NewManualGame {
 const GAME_COLUMNS: &str = "id, title, sort_title, source, install_dir, status, favorite, hidden, \
     sgdb_id, added_at, last_played_at, \
     (SELECT COALESCE(SUM(COALESCE(s.ended_at, s.last_seen_at) - s.started_at), 0) \
-     FROM sessions s WHERE s.game_id = games.id), progress, rating";
+     FROM sessions s WHERE s.game_id = games.id), progress, rating, size_bytes";
 
 fn game_from_row(row: &rusqlite::Row) -> rusqlite::Result<Game> {
     Ok(Game {
@@ -105,6 +108,7 @@ fn game_from_row(row: &rusqlite::Row) -> rusqlite::Result<Game> {
         playtime_secs: row.get(11)?,
         progress: row.get(12)?,
         rating: row.get(13)?,
+        size_bytes: row.get(14)?,
         collections: Vec::new(),
         images: HashMap::new(),
     })

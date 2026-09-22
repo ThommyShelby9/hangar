@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/Button";
 import { Sparkles } from "lucide-react";
 import { RecapDialog } from "@/features/stats/RecapDialog";
+import { DiskSpace } from "@/features/stats/DiskSpace";
 import { EmptyState } from "@/components/EmptyState";
 import { PlayCalendar, PlayColumns, TopGames } from "@/features/stats/charts";
 import { buildColumns } from "@/features/stats/columns";
@@ -114,6 +115,10 @@ export function StatsPage() {
               <PlayCalendar daily={year.daily} />
             </Section>
           )}
+
+          <Section title="Place sur tes disques">
+            <DiskSpace />
+          </Section>
 
           {data.recent.length > 0 && (
             <Section title="Dernières sessions">

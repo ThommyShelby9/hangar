@@ -28,6 +28,8 @@ export interface Game {
   progress: Progress | null;
   /** 1 to 5 stars. */
   rating: number | null;
+  /** Space the game folder takes, once measured. */
+  sizeBytes: number | null;
   /** Ids of the collections the game belongs to. */
   collections: number[];
   /** Files relative to the cache folder, see `imageUrl`. */

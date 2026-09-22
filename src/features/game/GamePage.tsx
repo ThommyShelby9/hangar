@@ -10,7 +10,7 @@ import { useGame, useGameStats, useRunningGames } from "@/features/library/queri
 import { GameCover } from "@/features/library/GameCover";
 import { useDominantColor } from "@/lib/color";
 import { motion } from "motion/react";
-import { formatDateTime, formatDuration, formatShortDate } from "@/lib/format";
+import { formatBytes, formatDateTime, formatDuration, formatShortDate } from "@/lib/format";
 import { EditGameDialog } from "@/features/game/EditGameDialog";
 import { ArtworkDialog } from "@/features/game/ArtworkDialog";
 import { GameShots } from "@/features/gallery/GameShots";
@@ -191,6 +191,13 @@ function GameView({ game }: { game: GameDetail }) {
           value={stats?.lastSession ? formatDuration(stats.lastSession.durationSecs) : "—"}
           detail={stats?.lastSession && formatShortDate(stats.lastSession.startedAt)}
         />
+        {game.sizeBytes !== null && (
+          <Figure
+            label="Sur le disque"
+            value={formatBytes(game.sizeBytes, 0)}
+            detail={game.installDir?.slice(0, 2)}
+          />
+        )}
       </section>
 
       <GameProgress key={game.id} game={game} />

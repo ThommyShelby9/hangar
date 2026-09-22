@@ -43,6 +43,7 @@ const SORTS = {
     compare: (a: Game, b: Game) => b.playtimeSecs - a.playtimeSecs,
   },
   added: { label: "Date d'ajout", compare: (a: Game, b: Game) => b.addedAt - a.addedAt },
+  size: { label: "Taille", compare: (a: Game, b: Game) => (b.sizeBytes ?? 0) - (a.sizeBytes ?? 0) },
 } as const;
 
 type Sort = keyof typeof SORTS;
