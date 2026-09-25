@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "motion/react";
@@ -10,6 +10,9 @@ import { useGames, useRunningGames } from "@/features/library/queries";
 import { GameCover } from "@/features/library/GameCover";
 import { useControllers } from "@/features/controllers/queries";
 import { useNavInput, type NavAction, type PadStyle } from "@/features/bigpicture/useNavInput";
+
+/** A game just started isn't in the "running" list yet: no second launch during this window. */
+const LAUNCH_GUARD_MS = 10_000;
 
 interface Row {
   title: string;
@@ -62,6 +65,7 @@ export function BigPicturePage() {
   }, []);
 
   const exit = useCallback(() => navigate("/bibliotheque"), [navigate]);
+  const justLaunched = useRef(0);
 
   const onAction = (action: NavAction) => {
     if (action === "back") return void exit();
@@ -77,13 +81,18 @@ export function BigPicturePage() {
         return setPos({ row: Math.min(rows.length - 1, row + 1), col });
       case "favorite":
         return void api.updateGame(selected.id, { favorite: !selected.favorite });
-      case "confirm":
-        if (running.has(selected.id) || selected.status === "missing") return;
+      case "confirm": {
+        // The tracker only notices the game a few seconds later; until then, refuse to start it again.
+        const busy =
+          running.has(selected.id) || performance.now() - justLaunched.current < LAUNCH_GUARD_MS;
+        if (busy || selected.status === "missing") return;
+        justLaunched.current = performance.now();
         setMessage(`Lancement de ${selected.title}…`);
         api
           .launchGame(selected.id)
           .catch((e) => setMessage(String(e)))
           .finally(() => setTimeout(() => setMessage(null), 4000));
+      }
     }
   };
   const detected = useNavInput(onAction);

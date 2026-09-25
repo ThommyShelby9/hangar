@@ -28,6 +28,9 @@ const KEYS: Record<string, NavAction> = {
 };
 const DIRECTIONS: NavAction[] = ["up", "down", "left", "right"];
 const REPEAT_DELAY_MS = 380;
+/** A button held while the controller is replaced (DS4Windows switching profile at launch) would
+ *  otherwise read as a second press. */
+const PRESS_COOLDOWN_MS = 800;
 const REPEAT_EVERY_MS = 110;
 const STICK_THRESHOLD = 0.55;
 
@@ -54,6 +57,7 @@ export function useNavInput(onAction: (action: NavAction) => void): PadStyle {
     window.addEventListener("keydown", onKey);
 
     const held = new Map<NavAction, number>(); // action → time of the next repeat
+    const fired = new Map<NavAction, number>(); // action → time of its last press
     let frame = 0;
     let lastStyle: PadStyle = null;
 
@@ -82,8 +86,12 @@ export function useNavInput(onAction: (action: NavAction) => void): PadStyle {
 
       for (const action of pressed) {
         const next = held.get(action);
+        const last = fired.get(action) ?? -Infinity;
         if (next === undefined) {
-          handler.current(action);
+          if (DIRECTIONS.includes(action) || now - last >= PRESS_COOLDOWN_MS) {
+            handler.current(action);
+            fired.set(action, now);
+          }
           held.set(action, now + REPEAT_DELAY_MS);
         } else if (DIRECTIONS.includes(action) && now >= next) {
           handler.current(action);
